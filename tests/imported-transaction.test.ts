@@ -6,6 +6,14 @@ import {
   normalizeRawTransactionHex,
 } from '../src/lib/imported-transaction';
 import { ReclaimerError } from '../src/lib/errors';
+import {
+  broadcastRawTransaction,
+  createBroadcastState,
+  txidFromRawTransaction,
+  type BroadcastFetch,
+  type BroadcastFetchInit,
+  type BroadcastResponse,
+} from '../src/lib/broadcast';
 import { splitIntoBatches } from '../src/lib/ordinals';
 import { buildSweepBatch, expectationFor } from '../src/lib/psbt';
 import { verifySignedPsbt } from '../src/lib/verify';
@@ -195,5 +203,161 @@ describe('network is not recoverable from raw bytes', () => {
     });
     expect(imported.ok).toBe(true);
     expect(imported.unverifiable.join(' ')).toContain('network cannot be determined');
+  });
+});
+
+/**
+ * Recovery safety for an interrupted session.
+ *
+ * A signed transaction lives in browser memory only, so a refresh loses it and
+ * the user is told to export the `.hex` first. These tests cover the half of that
+ * story that can be checked offline: the recovered bytes go through the same
+ * broadcast layer as a built sweep, are bound to one exact txid, cannot be
+ * submitted twice, and are never sent anywhere by merely being inspected.
+ *
+ * The import panel and the console share one `BroadcastState` instance, which is
+ * what makes the once-only property hold across a recovery rather than only
+ * within one flow. No live endpoint is contacted: the transport is fake.
+ */
+describe('recovered transaction safety', () => {
+  type Call = { url: string; init: BroadcastFetchInit };
+
+  function recorder(handler: (call: Call) => BroadcastResponse | Promise<BroadcastResponse>) {
+    const calls: Call[] = [];
+    const fetchImpl: BroadcastFetch = async (url, init) => {
+      const call = { url, init };
+      calls.push(call);
+      return handler(call);
+    };
+    return { fetchImpl, calls };
+  }
+
+  function response(status: number, body = ''): BroadcastResponse {
+    return {
+      ok: status >= 200 && status < 300,
+      status,
+      text: async () => body,
+      json: async () => JSON.parse(body) as unknown,
+    };
+  }
+
+  const SIGNET_BROADCAST = {
+    mainnetEnabled: false,
+    mainnetBroadcastEnabled: false,
+    signetBroadcastEnabled: true,
+  };
+  const NOTHING_ENABLED = {
+    mainnetEnabled: false,
+    mainnetBroadcastEnabled: false,
+    signetBroadcastEnabled: false,
+  };
+
+  it('inspects recovered bytes without touching the network', () => {
+    const { rawTxHex, txid } = signedRaw(2);
+    const originalFetch = globalThis.fetch;
+    let networkCalls = 0;
+    globalThis.fetch = (async () => {
+      networkCalls += 1;
+      throw new Error('inspection must not perform I/O');
+    }) as typeof fetch;
+
+    try {
+      const report = inspectImportedTransaction({ rawTxHex, network: 'Signet' });
+      expect(report.ok).toBe(true);
+      expect(report.txid).toBe(txid);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    expect(networkCalls).toBe(0);
+  });
+
+  it('refuses to broadcast recovered bytes when broadcasting is disabled', async () => {
+    const { rawTxHex, txid } = signedRaw(1);
+    const { fetchImpl, calls } = recorder(() => response(200, txid));
+
+    await expect(
+      broadcastRawTransaction({
+        rawTxHex,
+        txid,
+        network: 'Signet',
+        authorisation: NOTHING_ENABLED,
+        verificationPassed: true,
+        fetchImpl,
+        state: createBroadcastState(),
+      }),
+    ).rejects.toMatchObject({ code: 'BROADCAST_DISABLED' });
+
+    // The refusal happens before any request is made.
+    expect(calls).toHaveLength(0);
+  });
+
+  it('binds the submission to the exact authorized txid', async () => {
+    const { rawTxHex } = signedRaw(1);
+    const { fetchImpl, calls } = recorder(() => response(200, 'ignored'));
+
+    await expect(
+      broadcastRawTransaction({
+        rawTxHex,
+        txid: '00'.repeat(32),
+        network: 'Signet',
+        authorisation: SIGNET_BROADCAST,
+        verificationPassed: true,
+        fetchImpl,
+        state: createBroadcastState(),
+      }),
+    ).rejects.toMatchObject({ code: 'BROADCAST_TXID_MISMATCH' });
+
+    expect(calls).toHaveLength(0);
+  });
+
+  it('submits a recovered transaction at most once, across repeated recoveries', async () => {
+    const { rawTxHex, txid } = signedRaw(2);
+    // One ledger, exactly as `Reclaimer` passes a single instance to both the
+    // sweep flow and the import panel.
+    const sharedState = createBroadcastState();
+    const { fetchImpl, calls } = recorder(() => response(200, txid));
+    const request = {
+      rawTxHex,
+      txid,
+      network: 'Signet' as const,
+      authorisation: SIGNET_BROADCAST,
+      verificationPassed: true,
+      fetchImpl,
+      state: sharedState,
+    };
+
+    // Re-inspect between the two submissions, as a user re-loading the file would.
+    const first = await broadcastRawTransaction(request);
+    const reInspected = inspectImportedTransaction({ rawTxHex, network: 'Signet' });
+    expect(reInspected.txid).toBe(txid);
+    const second = await broadcastRawTransaction(request);
+
+    expect(first.status).toBe('accepted');
+    expect(second).toEqual(first);
+    expect(calls).toHaveLength(1);
+    expect(sharedState.completed.has(txid)).toBe(true);
+  });
+
+  it('derives a stable txid so an approval cannot transfer to other bytes', () => {
+    const { rawTxHex, txid } = signedRaw(2);
+
+    // Whitespace, an 0x prefix and upper case are the same bytes, so one
+    // acknowledgement covers all of them.
+    const reordered = inspectImportedTransaction({
+      rawTxHex: `  0x${rawTxHex.toUpperCase()}\n`,
+      network: 'Signet',
+    });
+    expect(reordered.txid).toBe(txid);
+
+    // Changing a single byte of the previous-output reference produces a
+    // different txid, so an approval for one transaction can never authorise
+    // another. Byte 7 — hex characters 14 and 15 — is the first byte of the
+    // first input's prevout txid, so the structure stays valid and only the
+    // identity changes.
+    const flipped = `${rawTxHex.slice(0, 14)}${rawTxHex[14] === '0' ? '1' : '0'}${rawTxHex.slice(15)}`;
+    expect(flipped).not.toBe(rawTxHex);
+    expect(flipped).toHaveLength(rawTxHex.length);
+    expect(txidFromRawTransaction(flipped)).not.toBe(txid);
   });
 });
