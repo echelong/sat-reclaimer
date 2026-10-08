@@ -81,6 +81,8 @@ and the final release report.
 | E6 | Signing/broadcast separation is structural, not cosmetic | **PASS** | `broadcast:false` always sent; broadcast layer re-derives txid and re-checks network scoping |
 | E7 | Independent **external** security audit | **NOT VERIFIED** | Internal review only. **Blocks unrestricted public Mainnet launch.** |
 | E8 | A security contact (email/PGP) for vulnerability reports | **FAIL** | No contact exists. `SECURITY.md` documents the intended process and names the missing contact as a release blocker rather than inventing an address |
+| E9 | No high or critical advisory in the dependency tree that ships | **PASS** | The first audit failed on 39 advisories, 34 of them in the shipped tree — all transitively from `sats-connect`, which exact-pins `@sats-connect/core` (→ `axios 1.12.0`) and `valibot 1.1.0`, both of which land in the browser bundle. Fixed with `pnpm.overrides` to `axios 1.20.0` and `valibot 1.5.0`; `pnpm audit --prod --audit-level=high` now reports no known vulnerabilities. Real-wallet behaviour at those versions stays gate B5/B6 |
+| E10 | Every remaining high/critical advisory is explicit, dev-only and unfixable | **PASS** | Exactly one remains: `braces` (GHSA-vfj7-8cjw-p6xm), reachable only from the ESLint glob chain, and 3.0.3 is the newest release with no patched version listed. It is waived by name in `scripts/audit-allowlist.mjs`, which fails the build on any *new* high/critical advisory anywhere in the tree |
 
 ## F — Open-source publication
 
@@ -92,7 +94,7 @@ and the final release report.
 | F4 | Never force-push or overwrite existing remote history | **PASS** | No remote configured at audit time; creation path checks existence first |
 | F5 | README / CONTRIBUTING / SECURITY / CODE_OF_CONDUCT / issue + PR templates | **PASS** | All present in the tree |
 | F6 | CI runs lint, typecheck, test, build on the public initial commit | **PENDING** | Workflows authored (`.github/workflows/ci.yml`); first green run on GitHub recorded in the final report |
-| F7 | Dependency security review in CI | **PASS** | `audit` job (`pnpm audit --audit-level=high`) |
+| F7 | Dependency security review in CI | **PASS** | `audit` job: `pnpm audit --prod --audit-level=high` gates what ships, then `scripts/audit-allowlist.mjs` gates the rest of the tree and fails on anything not explicitly waived. The initial push failed this job, which is how 39 advisories were found; it now passes |
 | F8 | CodeQL / static analysis | **PASS** | `.github/workflows/codeql.yml` (`security-and-quality`, weekly cron) |
 | F9 | Dependabot configured for npm + actions | **PASS** | `.github/dependabot.yml` (grouped bitcoin/react/tooling) |
 | F10 | Branch protection requiring CI before merge | **NOT VERIFIED** | Requires repository settings that cannot be applied by code; documented in the final report |
@@ -166,7 +168,7 @@ elements extending past the device width.
 ## Gate summary
 
 - **PASS with reproducible in-repo evidence:** A1–A10, B1–B4, C1–C6, D1–D6,
-  E1–E6, F1, F3–F5, F7–F9, G1–G5, G8, H1–H8, I1–I6, J4.
+  E1–E6, E9–E10, F1, F3–F5, F7–F9, G1–G5, G8, H1–H8, I1–I6, J4.
 - **PENDING (verified during Phase 5 and recorded in the final report):**
   F2, F6, I7, J1.
 - **FAIL (must be fixed before unrestricted public launch):** E8 (no security

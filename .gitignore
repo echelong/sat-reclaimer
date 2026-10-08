@@ -10,3 +10,6 @@ coverage
 
 # Local browser QA captures (see docs/DESIGN_SYSTEM.md). Regenerable.
 qa-screenshots
+
+# Local output of the dependency audit gate (see SECURITY.md).
+audit.json

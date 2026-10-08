@@ -195,6 +195,12 @@ which fields it cannot verify instead of assuming them.
 - **Strict CSP and headers.** `default-src 'none'`, `frame-ancestors 'none'`,
   `connect-src` limited to the public broadcast hosts this app actually uses. See
   [`next.config.ts`](next.config.ts).
+- **Shipped dependencies are audited on every change.** CI fails on any high or
+  critical advisory in the tree that ships, and on any *new* one anywhere in the
+  tree. One dev-only advisory with no patched release is waived by name, with its
+  reasoning, in `scripts/audit-allowlist.mjs`. Two advisories inherited from
+  `sats-connect` (`axios`, `valibot`) are forced forward with `pnpm.overrides`.
+  See [SECURITY.md](SECURITY.md#dependencies).
 - **Not audited.** No independent external security review has been performed. The
   internal review, its findings and its scope limits are in
   [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md); the gate that stays open

@@ -102,6 +102,36 @@ So that no report needs to establish it:
 - Claim that a broadcast is confirmed without checking its on-chain status.
 - Claim an audit that has not happened.
 
+## Dependencies
+
+A Bitcoin transaction tool that ships a known vulnerable dependency is shipping a
+vulnerability, so dependency state is treated as part of the security surface
+rather than as housekeeping.
+
+Every change to `pnpm-lock.yaml` is covered by two gates in CI:
+
+1. `pnpm audit --prod --audit-level=high` — anything that reaches a user fails the
+   build at high or critical severity.
+2. `scripts/audit-allowlist.mjs` — the rest of the tree, including build and test
+   tooling. Any new high or critical advisory fails the build.
+
+The only standing exception is `braces` (GHSA-vfj7-8cjw-p6xm), reachable solely
+from the ESLint glob chain. It never enters the application bundle, `3.0.3` is the
+newest release and the advisory lists no patched version, so the waiver is written
+by name into that script with its reasoning rather than hidden in a threshold.
+Adding anything to that list requires it to be dev-only *and* unfixable, and the
+reason has to say so.
+
+Two dependencies inherited from `sats-connect` are overridden deliberately.
+`sats-connect` exact-pins `@sats-connect/core` and `valibot`, which in turn pin
+`axios 1.12.0` and `valibot 1.1.0`; both land in the browser bundle and both carry
+published advisories. `pnpm.overrides` moves them to `axios 1.20.0` and
+`valibot 1.5.0`. Both are within the same major as the pins, and the override is a
+reviewed decision, not a silent resolution: if `sats-connect` ships fixed pins,
+the overrides should be removed. Note the honest limit — the wallet integration is
+not exercised against a live provider here, so real-wallet behaviour at the
+overridden versions is covered by release gate B5/B6, not by the test suite.
+
 ## A note on what is *not* protected
 
 An inscription-bearing UTXO is an ordinary Bitcoin UTXO. Spending it can move the

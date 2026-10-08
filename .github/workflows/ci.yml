@@ -136,8 +136,19 @@ jobs:
       - name: Install dependencies (frozen lockfile)
         run: pnpm install --frozen-lockfile
 
-      # High and critical advisories fail the build. This is not advisory output
-      # that a reviewer can skim past: a transaction tool that ships a known high
-      # severity dependency is a release blocker.
-      - name: Audit for high and critical advisories
-        run: pnpm audit --audit-level=high
+      # The gate. `--prod` resolves the tree that actually ships, so a high or
+      # critical advisory in anything a user downloads fails the build. This is
+      # not advisory output a reviewer can skim past: a transaction tool that
+      # ships a known high severity dependency is a release blocker.
+      - name: Audit shipped dependencies (high and critical fail)
+        run: pnpm audit --prod --audit-level=high
+
+      # The rest of the tree, including build and test tooling. A new advisory
+      # here fails the build too, unless it is one of the documented dev-only
+      # exceptions this script carries — each of which must be dev-only and must
+      # have no patched release. See scripts/audit-allowlist.mjs.
+      - name: Audit the full tree, allowing only documented dev-only exceptions
+        run: |
+          set -uo pipefail
+          pnpm audit --json > audit.json
+          node scripts/audit-allowlist.mjs audit.json
