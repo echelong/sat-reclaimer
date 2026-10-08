@@ -33,11 +33,16 @@ request that breaks one will be closed rather than patched:
 ```bash
 git clone https://github.com/echelong/sat-reclaimer
 cd sat-reclaimer
+corepack enable                # use the pinned pnpm@10.17.1
 pnpm install
-cp .env.example .env.local     # every flag defaults to off
-pnpm dev                       # http://localhost:3000      landing
-                               # http://localhost:3000/app  reclaim console
+pnpm local                     # asks which mode; the default cannot spend
+                               # http://127.0.0.1:3000      landing
+                               # http://127.0.0.1:3000/app  reclaim console
 ```
+
+`pnpm local` sets the product flags for you, so no `.env.local` editing is needed
+to run the app; `cp .env.example .env.local` remains the manual path. See
+[`docs/LOCAL_SETUP.md`](docs/LOCAL_SETUP.md).
 
 Node 22 and `pnpm@10.17.1` (pinned via `packageManager`). The whole test suite is
 offline: no network access and no Mainnet dependency.
@@ -55,12 +60,13 @@ also run the large-wallet suite:
 pnpm test:max  # adds the 10,000-UTXO plan (~2 minutes)
 ```
 
-`pnpm test` runs 238 tests in roughly six minutes, most of it real PSBT
-construction, signing, verification and finalization for wallets from 1 to 5,000
-inputs. The 10,000-input plan is one ~100-second synchronous computation, so it
-lives behind `pnpm test:max` rather than in the default run — a runtime decision,
-not a correctness one. It passes in the normal suite (verified: 238/238), and CI
-runs both commands in separate jobs. Its measured results are in
+`pnpm test` runs 243 tests (242 pass, 1 skipped) in roughly six minutes, most of it
+real PSBT construction, signing, verification and finalization for wallets from 1
+to 5,000 inputs. The one skip is the 10,000-input plan: it is a single ~100-second
+synchronous computation, so it lives behind `pnpm test:max` rather than in the
+default run — a runtime decision, not a correctness one. `pnpm test:max` runs
+`tests/large-wallet.test.ts` with `LARGE_WALLET_MAX=1` and passes 7/7, including
+that plan, and CI runs both commands in separate jobs. Its measured results are in
 [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 
 ## What a good change looks like

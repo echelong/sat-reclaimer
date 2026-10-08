@@ -52,6 +52,8 @@ No seed phrase or private key enters the application.
 | `app/(routes)` | `/` is the public landing page; `/app` mounts `Reclaimer`. `app/icon.svg`, `app/sitemap.ts` and `app/robots.ts` are metadata routes |
 | `src/components/landing/*` | Landing sections. `Nav`, `Hero`, `HowItWorks`, `Problem`, `Trust`, `Faq`, `Footer` are static; `HeroVisualization` and `Demo` are the only components that run a frame loop, and both own and release it |
 | `src/components/ui/*` | Shared motion primitives (`Reveal`, `Counter`, `useReducedMotion`). Nothing here imports domain code |
+| `scripts/start-local.mjs` | Local launcher. Chooses a network/broadcast mode, prints exactly what it is about to enable, binds to `127.0.0.1` only, and requires a typed phrase before Mainnet broadcasting can be enabled |
+| `scripts/check-environment.mjs` | Read-only environment check (Node, pnpm, dependencies, platform) with per-platform install hints. Installs nothing, changes nothing, asks for no privileges |
 
 Import direction is one-way: `errors → types → bitcoin → sighash → ordinals →
 psbt/verify → broadcast → ui`, with `xverse` as a leaf for wallet access. Only
@@ -209,6 +211,32 @@ While it is on:
   the same independent nodes (mempool or confirmed, with the block height when
   reported) without ever submitting anything.
 
+### M6: local distribution and release candidate
+
+The app is distributed by cloning the public repository and running it locally,
+not by deploying a site. There is no domain, no hosted build, no account and no
+server component.
+
+- `scripts/start-local.mjs` is the front door. It sets the three product flags
+  itself so no one has to hand-edit `.env.local`, prints exactly what it is about
+  to enable, defaults to a mode that cannot spend anything, and binds to
+  `127.0.0.1` — the hostname is deliberately not configurable so it cannot be
+  exposed on a network interface by accident. `--mode=broadcast` refuses to start
+  without a typed confirmation.
+- `scripts/check-environment.mjs` checks the toolchain read-only and prints the
+  ordinary per-platform install command for anything missing.
+- `docs/LOCAL_SETUP.md` documents both the simple path (`corepack enable`,
+  `pnpm install`, `pnpm local`) and the manual `--frozen-lockfile` path.
+- `docs/MANUAL_ACCEPTANCE.md` is the operator-assisted suite for the parts no
+  offline test can reach (a live Xverse wallet); every case is currently `NOT RUN`.
+- `docs/AUDIT_HANDOFF.md` is the brief for an independent reviewer, not a review.
+- `docs/RELEASE_NOTES_v0.1.0-rc.1.md` is the prepared, **unpublished**, source-only
+  release candidate.
+
+Linux (Fedora 43, x86_64) is verified end to end. Windows and macOS are recorded
+as **NOT VERIFIED** in [`docs/RELEASE_GATES.md`](RELEASE_GATES.md) (gates K9/K10)
+because no environment was available to install and run the tool on either.
+
 ## Documentation map
 
 | Document | What it answers |
@@ -220,6 +248,10 @@ While it is on:
 | [`docs/RISK.md`](RISK.md) | The risk disclosure published on the website |
 | [`docs/PUBLIC_BETA.md`](PUBLIC_BETA.md) | Beta readiness, launch blockers and the unsigned-transaction persistence design |
 | [`docs/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) | Tokens, typography and motion rules shared by both routes |
+| [`docs/LOCAL_SETUP.md`](LOCAL_SETUP.md) | How to install and run the app locally, per platform |
+| [`docs/MANUAL_ACCEPTANCE.md`](MANUAL_ACCEPTANCE.md) | The operator-assisted manual acceptance suite for the parts no offline test can reach |
+| [`docs/AUDIT_HANDOFF.md`](AUDIT_HANDOFF.md) | The brief for an independent Bitcoin security reviewer |
+| [`docs/RELEASE_NOTES_v0.1.0-rc.1.md`](RELEASE_NOTES_v0.1.0-rc.1.md) | The prepared, unpublished source-only release candidate |
 
 ## Non-goals
 

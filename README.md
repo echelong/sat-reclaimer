@@ -14,8 +14,10 @@ an owner opt selected `bc1p` outputs back into ordinary coin selection after an
 explicit destructive-asset acknowledgement — and it is honest about what that
 does and does not do.
 
+- **[Local setup](docs/LOCAL_SETUP.md)** — how to install and run it on your own machine.
 - **[Risk disclosure](docs/RISK.md)** — read this before Mainnet.
 - **[Release gates](docs/RELEASE_GATES.md)** — exactly what is proven and what is not.
+- **[Release candidate v0.1.0-rc.1](docs/RELEASE_NOTES_v0.1.0-rc.1.md)** — prepared, **not published**; source-only.
 - **License:** [MIT](LICENSE)
 
 ![The SAT//RECLAIMER landing page](docs/screenshots/landing.png)
@@ -96,13 +98,28 @@ few hundred sats, a high fee rate can consume most of the value. So:
 
 ## Run it locally
 
-Requires Node 22+ and pnpm 10 (`corepack enable` will pick up the pinned
-`packageManager`).
+Requires **Node.js 22+** and **pnpm 10**. No database, no Docker, no server, no
+administrator rights.
 
 ```bash
+git clone https://github.com/echelong/sat-reclaimer.git
+cd sat-reclaimer
+corepack enable      # use the pinned pnpm 10.17.1 from packageManager
 pnpm install
-pnpm dev     # http://localhost:3000      landing page
-             # http://localhost:3000/app  the reclaim console
+pnpm local           # asks which mode to run in, then serves 127.0.0.1:3000
+```
+
+Then open <http://127.0.0.1:3000> (landing) or <http://127.0.0.1:3000/app> (the
+reclaim console). `pnpm local` prints exactly what it is about to enable, and its
+default mode — the one you get by pressing Enter — cannot spend anything. It binds
+to `127.0.0.1` only, so it is never reachable from your network.
+
+Full per-platform instructions (Fedora/Linux, macOS, Windows), the manual
+`--frozen-lockfile` path, the mode table and troubleshooting are in
+**[docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md)**. Check your machine first with:
+
+```bash
+pnpm local:check  # read-only: Node, pnpm, dependencies, platform
 ```
 
 ```bash
@@ -116,8 +133,9 @@ pnpm test:max     # 10,000-UTXO scale run; see docs/PERFORMANCE.md
 
 ### Environment
 
-Copy `.env.example` to `.env.local`. Every flag is off unless set to exactly
-`true`.
+`pnpm local` sets the three product flags for you — you do not need to edit any
+file to run the app. For the manual/advanced path, copy `.env.example` to
+`.env.local`; every flag is off unless set to exactly `true`.
 
 ```bash
 NEXT_PUBLIC_ENABLE_MAINNET=false

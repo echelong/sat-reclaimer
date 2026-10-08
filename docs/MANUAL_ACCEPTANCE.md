@@ -1,0 +1,534 @@
+# Manual acceptance suite
+
+Operator-assisted tests for the parts of SAT//RECLAIMER that only a real browser
+wallet can exercise: Xverse connection, inscription scanning against the live
+provider, signing, and on-chain confirmation.
+
+**None of these cases has been run.** Every result cell below reads `NOT RUN`.
+This document is a procedure, not a record. Do not read the presence of a case as
+evidence that it passed, and do not close a release gate until its result cell
+holds a real observation.
+
+The gates these cases close are listed in [`RELEASE_GATES.md`](RELEASE_GATES.md):
+**B5**, **B6**, **C8**, **C9**, **H9**, **H10**, **J2**, **J3**. All of them are
+currently **NOT VERIFIED** for the same reason — this repository cannot drive a
+browser extension, and no automated test can stand in for a wallet the user
+actually approves.
+
+## What the historical Mainnet sweep does and does not cover
+
+The operator previously broadcast and confirmed a 1,079-input inscription sweep:
+
+| | |
+| --- | --- |
+| txid | `0a7d30ca8f940b137c96c65bb32ffec34f53a8a128cadf154f8df83055257e1a` |
+| block | 970454 |
+| weight / vsize | 248,348 WU / 62,087 vB |
+| inputs / outputs | 1,079 key-path P2TR inputs → one P2SH output of 539,127 sats |
+
+That is real evidence that the flow worked, once, on an earlier version of the
+code, driven by an operator who could see the screen. It is **historical
+evidence and nothing more**. It does not prove that the current version connects,
+scans, signs or broadcasts, and it does not exercise cancellation, recovery,
+disconnect/reconnect or network switching at all. Details in
+[`MAINNET_ACCEPTANCE.md`](MAINNET_ACCEPTANCE.md).
+
+## Safety rules for the operator
+
+1. **Nothing here must be run on Mainnet with real funds until you have
+   deliberately decided to.** Cases M1–M9 are ordered so the first six can be run
+   on Signet or Testnet. Only M7 and M9 require a broadcast, and only M9 requires
+   a real chain.
+2. **Start on Signet or Testnet if you can.** If no inscription-bearing
+   Signet/Testnet UTXO exists for the wallet under test, that is itself the
+   finding recorded for gate C9, and it is a reason to stop rather than to move
+   straight to Mainnet.
+3. **This tool never asks for a seed phrase or a private key.** If any screen,
+   prompt or error ever appears to ask for one, that is a critical security
+   finding: stop immediately and record it as a vulnerability under
+   [`SECURITY.md`](../SECURITY.md), not as a failed test.
+4. **A broadcast is only ever your own explicit action.** Signing sends
+   `broadcast: false` to Xverse, always. Nothing in this application retries,
+   rebroadcasts or signs a replacement.
+5. **A transaction you sign but do not broadcast does not exist on the network.**
+   Closing the tab loses it and costs you a second approval. Your bitcoin is never
+   at risk; your time is.
+6. **Do not test with a wallet whose inscriptions matter to you.** Spending an
+   inscription output can permanently move or affect everything it carries.
+
+## Prerequisites
+
+| Item | Requirement |
+| --- | --- |
+| Browser | A current Chromium, Firefox or Safari build with the **Xverse** extension installed and unlocked |
+| Wallet | Xverse with an **Ordinals (Taproot, `bc1p`/`tb1p`) address** and, for M4/M5/M7, a wallet that actually holds inscription-bearing UTXOs |
+| App | `pnpm build && pnpm start`, or `pnpm dev`. Note the URL it prints — the console is at `/app` |
+| Flags | Record the three flags you ran with. Cases M7 and M9 need broadcasting enabled for the chain under test (see `docs/LOCAL_SETUP.md`) |
+| Chain | Signet/Testnet for M1–M6 and M8. Mainnet only for the final M7/M9 passes, and only by your explicit decision |
+
+Run each case from a **clean console state**: reload `/app` before starting, so a
+result cannot be attributed to state left by the previous case.
+
+## How to record evidence
+
+An entry is only evidence if someone else could check it. For every case record:
+
+- **The result**, `PASS` or `FAIL`. Use `BLOCKED` when the case could not be
+  started, and say why (no provider, no funded wallet, no Signet UTXO).
+- **The exact console error code**, if one appeared. Refusals are prefixed with a
+  machine-readable code in brackets, for example `[WALLET_NOT_INSTALLED]` or
+  `[SCAN_INCOMPLETE]`. The code is the most useful thing in the record; the prose
+  message is not.
+- **The txid** for anything that reached a node, and the explorer URL it can be
+  checked at.
+- **A screenshot** of the console state being asserted, with **wallet addresses
+  and any txid that is not already public redacted**. Redacting an address is
+  correct. A redacted seed phrase should never exist in the first place.
+- **What you ran**: the commit (`git rev-parse --short HEAD`), the browser and
+  Xverse versions, the chain, and the three flag values.
+
+The complete list of codes the application can emit. This is the whole
+`ReclaimerErrorCode` union from `src/lib/errors.ts`, plus `UNEXPECTED`, which
+`errorCode()` returns for anything that is not a `ReclaimerError`:
+
+`MAINNET_DISABLED`, `SCAN_INCOMPLETE`, `BROADCAST_DISABLED`,
+`BROADCAST_IN_FLIGHT`, `BROADCAST_REJECTED`, `BROADCAST_TXID_MISMATCH`,
+`BROADCAST_UNKNOWN`, `BROADCAST_UNREACHABLE`, `BROADCAST_MALFORMED`,
+`WALLET_NOT_INSTALLED`, `WALLET_USER_REJECTED`, `WALLET_TIMEOUT`,
+`WALLET_MALFORMED_RESPONSE`, `WALLET_NETWORK_MISMATCH`, `WALLET_ERROR`,
+`ORDINALS_ADDRESS_MISSING`, `ORDINALS_KEY_INVALID`, `ORDINALS_KEY_MISMATCH`,
+`INVALID_DESTINATION`, `INVALID_FEE_RATE`, `INVALID_OUTPOINT`, `INVALID_POSTAGE`,
+`DUPLICATE_INPUT`, `EMPTY_BATCH`, `FEE_EXCEEDS_VALUE`, `DUST_OUTPUT`,
+`ACCOUNTING_MISMATCH`, `INPUT_INDEX_MISMATCH`, `WEIGHT_LIMIT_EXCEEDED`,
+`PSBT_MALFORMED`, `VERIFICATION_FAILED`, `UNEXPECTED`.
+
+If a refusal appears with **no** code, or with a code outside that list, record it
+— it means an unhandled path was reached. If the code is in the list, it is a
+refusal the application made on purpose, and what matters is whether the refusal
+was correct.
+
+---
+
+## M1 — Wallet connection
+
+**Closes:** B5 (live wallet approval), J2 (connect and see the wallet)
+**Chain:** Signet or Testnet. **Real funds at risk:** none. **Funded wallet:** not required.
+
+**Preconditions:** Xverse installed and unlocked, set to the same network the
+console is set to. The console is on `/app` with a clean reload.
+
+**Steps**
+
+1. In step 01, leave the **Network** selector on `Signet` (or `Testnet`).
+2. Press **Connect Xverse**.
+3. Approve the connection in the Xverse popup. The request carries
+   `message: "Connect to inspect inscription UTXOs and build a BTC sweep."` and asks
+   for the **Ordinals** and **Payment** addresses.
+4. Wait for the console to return. Read step 01's summary block.
+
+**Expected result**
+
+- `WALLET` reads `Xverse · <network>` and the chip reads **Connected**.
+- **Ordinals (bc1p / tb1p)** shows the wallet's Taproot address, and **Payment**
+  shows the payment address. Both are readable, not truncated into ambiguity.
+- **Wallet reports network** matches the selected network exactly.
+- The status line reads `Connected to … on … Address and public key agree.`
+- No error banner appears. `src/lib/xverse.ts` calls `deriveOrdinalTaproot` before
+  returning, so reaching this state means the reported public key really is the
+  BIP86 output of the displayed address — a wallet that returned a mismatched pair
+  would have stopped with `[ORDINALS_KEY_MISMATCH]` instead.
+
+**Failure to record:** a wallet whose Ordinals address is not `p2tr` must be
+refused with `[ORDINALS_ADDRESS_MISSING]` and an explanation naming the returned
+address type. Record that as a PASS for the refusal, not a FAIL.
+
+| Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
+| --- | --- |
+| NOT RUN | NOT RUN |
+
+---
+
+## M2 — Wallet disconnect and reconnect
+
+**Closes:** H9 (disconnect/reconnect), C5 (post-scan state handling)
+**Chain:** Signet or Testnet. **Real funds at risk:** none. **Funded wallet:** not required.
+
+**Preconditions:** M1 completed in the same session, so a wallet is connected.
+
+**Steps**
+
+1. Press **Disconnect**.
+2. Observe the console state.
+3. Press **Reconnect Xverse** and approve in Xverse.
+4. Reconnect, then press **Scan all inscriptions**, then **Disconnect while a scan
+   result is on screen**.
+5. Reconnect again and start a fresh scan.
+
+**Expected result**
+
+- After **Disconnect**: `WALLET` reads `Disconnected`, the status line reads
+  `Disconnected.`, and the address rows are gone.
+- Reconnecting clears prior state rather than carrying it over: scan, selection,
+  sweep, verification reports, broadcast outcomes and confirmation statuses are all
+  reset (`onConnect` clears them explicitly). A stale "verified" badge from the
+  previous wallet must not survive.
+- **Disconnecting with a scan on screen** clears the scan and the sweep too, so no
+  transaction built from the previous session can still be signed. A signature
+  request is bound to the address the wallet returns, so a leftover sweep cannot
+  be signed by a different wallet — but record what the screen actually showed.
+- After reconnect, the destructive acknowledgement is unchecked again, and the
+  signing phrase field is empty.
+
+| Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
+| --- | --- |
+| NOT RUN | NOT RUN |
+
+---
+
+## M3 — Network switching
+
+**Closes:** H9 (network switches), B5
+**Chain:** two networks required (for example Signet and Testnet, or Testnet and Mainnet). **Real funds at risk:** none, provided you do not sign on Mainnet.
+
+**Preconditions:** Xverse can be switched between two Bitcoin networks.
+
+**Steps**
+
+1. With Xverse on **Signet**, set the console's **Network** selector to **Testnet**
+   and press **Connect Xverse**.
+2. Record the refusal.
+3. Switch Xverse itself to **Testnet**, then connect again.
+4. Now set the console back to **Signet** while Xverse stays on Testnet, and
+   connect.
+5. Switch Xverse back and confirm the console reconnects cleanly.
+
+**Expected result**
+
+- Step 1 must be **refused with `[WALLET_NETWORK_MISMATCH]`**, naming the network
+  Xverse is on and the network the console is set to, and stating that nothing will
+  be built on the wrong chain. The console must not proceed to step 02.
+- A network mismatch must never be silently accepted and must never produce a
+  transaction.
+- After switching Xverse, connecting succeeds and **Wallet reports network** matches.
+- If Mainnet is disabled in the build, selecting `Mainnet` shows
+  `Mainnet (locked in code)` in the selector and refuses with `[MAINNET_DISABLED]`
+  rather than attempting anything.
+
+| Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
+| --- | --- |
+| NOT RUN | NOT RUN |
+
+---
+
+## M4 — Full inscription scanning
+
+**Closes:** H10 (pagination against a live provider), J2 (see gross BTC, fees, net output)
+**Chain:** Signet or Testnet preferred. **Real funds at risk:** none — scanning never signs. **Funded wallet:** **yes**, with inscription-bearing UTXOs.
+
+**Preconditions:** M1 completed. The wallet holds inscription UTXOs. For the
+pagination part of this case the wallet should hold **more inscriptions than the
+provider's page size**, so more than one request is required.
+
+**Steps**
+
+1. Press **Scan all inscriptions** and let it finish. Do not navigate away.
+2. Read the step 02 statistics block in full.
+3. Compare **Indexer reported** with **Inscriptions retrieved**.
+4. If the console reports any quarantined rows, open *N row(s) excluded as
+   unusable* and read the reasons.
+5. Press **Scan all inscriptions** again and confirm the numbers are stable.
+6. Optionally, watch the browser's network panel and confirm the request count
+   matches **Pages read**.
+
+**Expected result**
+
+- **Pages read** is greater than 1 for a wallet larger than one page, and
+  **Inscriptions retrieved** reaches **Indexer reported**.
+- **Unique UTXOs** is less than or equal to the inscription count, because several
+  inscriptions can share one output.
+- **Total sats** is the gross input value, and the console must label it as such —
+  it is not "recovered" bitcoin and must never be presented as the net result.
+- A scan that cannot reach the reported total must end with
+  `Scan INCOMPLETE — retrieved X of Y` and `[SCAN_INCOMPLETE]` on any attempt to
+  sweep. It must **not** present a partial inventory as complete.
+- Running the scan twice must produce the same UTXO count and the same total; a
+  count that drifts between runs is a finding.
+- **Rows with no address** must be reported if non-zero, with the explanatory note,
+  rather than folded into a claim that every row was confirmed as the wallet's.
+
+| Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
+| --- | --- |
+| NOT RUN | NOT RUN |
+
+---
+
+## M5 — Large PSBT payload handling
+
+**Closes:** B6 (the provider's real payload limit — the release blocker for the largest wallets)
+**Chain:** Signet or Testnet strongly preferred. **Real funds at risk:** only if you sign on Mainnet. **Funded wallet:** **yes**, ideally with hundreds to thousands of inscription UTXOs.
+
+**Preconditions:** M4 completed, so a whole-wallet scan is on screen. A
+destination address valid on the same network is prepared. **This is the only case
+that can close B6, and it cannot be closed by a synthetic run.**
+
+**Steps**
+
+1. Acknowledge the destructive warning, then **Select all N UTXOs**.
+2. Enter the destination address and a fee rate of `1`.
+3. Press **Sweep all** and read step 05's headline: either
+   `N UTXOs → 1 Bitcoin transaction → 1 destination` or the multi-batch form.
+4. Record the pre-sign review figures: input count, total input sats, destination
+   output sats, mining fee, fee as a percentage, vsize and weight.
+5. Press **Sign + verify** for batch 1.
+6. **Watch what Xverse does.** This is the observation B6 exists for: does it
+   present the full input list, does it accept the payload, does it refuse, does it
+   time out, or does the extension become unresponsive?
+7. If Xverse refuses for a size reason, record the exact wording, then observe the
+   console's automatic re-plan: it must halve the largest batch and report
+   `Xverse rejected the N-input transaction as too large. Re-planned the same N
+   UTXOs into M transactions of up to K inputs each … Nothing was signed.`
+8. Sign and verify the remaining batches one at a time.
+
+**Expected result**
+
+- With Xverse's approval, the signed PSBT is verified locally per batch and the
+  final review block appears with input count, input sats, output sats, mining fee,
+  fee percentage, vsize, destination and txid.
+- If Xverse refuses the payload, the console re-plans rather than failing, and the
+  re-plan preserves the total: the sum of the batches must cover **exactly** the
+  selected UTXO set, with no input lost and none signed twice.
+- Every batch must verify on its own. A `[VERIFICATION_FAILED]` on any batch means
+  **do not broadcast** and is a critical finding.
+- Nothing is signed without the `SPEND AS BTC` phrase and, on Mainnet, the separate
+  Mainnet acknowledgement.
+
+**Record explicitly, for gate B6:** the largest number of inputs Xverse actually
+accepted in one signing request, the largest number it refused, and the exact
+refusal text. That single number is the evidence B6 needs, and it belongs in
+[`PERFORMANCE.md`](PERFORMANCE.md) beside the synthetic table — labelled as the
+real-wallet figure, separate from the synthetic one.
+
+| Largest batch accepted by Xverse | Largest refused, and the exact refusal text | Result (PASS/FAIL/BLOCKED) | Evidence |
+| --- | --- | --- | --- |
+| NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+
+---
+
+## M6 — User cancellation
+
+**Closes:** B5 (the wallet really does control the outcome), and the guarantee that a cancelled request has no side effect
+**Chain:** Signet or Testnet. **Real funds at risk:** none. **Funded wallet:** **yes** for the cancellation-of-signing step.
+
+**Preconditions:** M4 completed and a sweep is built in step 05.
+
+**Steps**
+
+1. Press **Sign + verify**, then **reject the request inside Xverse**.
+2. Record the console's response and the resulting state.
+3. Confirm that no transaction review block appeared, that no txid is shown, and
+   that the sweep is still present and still signable.
+4. Press **Sign + verify** again and approve this time; confirm the flow recovers.
+5. Separately, disconnect in step 01 and then attempt the scan: it must be
+   unavailable while no wallet is connected.
+6. Separately, press **Connect Xverse** and dismiss the Xverse popup without
+   approving. Wait, and record what happens.
+
+**Expected result**
+
+- A rejection surfaces as `[WALLET_USER_REJECTED]` with a message stating that
+  nothing was signed and nothing was broadcast (`src/lib/xverse.ts` maps
+  `RpcErrorCode.USER_REJECTION` this way).
+- **No** verification report and **no** txid are produced by a cancelled request.
+- Retrying after a cancellation works; the console is not left in a broken state.
+- A popup dismissed without answering is a **timeout**, not a rejection: the
+  interactive timeout is 10 minutes for connect and signing (`INTERACTIVE_TIMEOUT_MS`),
+  after which the console must report `[WALLET_TIMEOUT]`. Record how long it
+  actually took and whether the console stayed responsive while waiting.
+- At no point does a cancellation produce a transaction, a broadcast or a retry.
+
+| Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
+| --- | --- |
+| NOT RUN | NOT RUN |
+
+---
+
+## M7 — Signing and signature verification
+
+**Closes:** B5 (live approval verified locally), J3 (the user approves and the fee is zero)
+**Chain:** Signet or Testnet first. **Real funds at risk:** **only if run on Mainnet.** **Funded wallet:** **yes**.
+
+**Preconditions:** M4 completed; a sweep built; destination validated with
+**Validate destination only**; broadcasting enabled for the chain if this case is
+extended into M9.
+
+**Steps**
+
+1. Type `SPEND AS BTC` into the **Signing acknowledgement phrase** field. Confirm
+   that **Sign + verify** is disabled until the phrase matches exactly.
+2. On Mainnet, also tick the **MAINNET — REAL BTC** acknowledgement and confirm
+   that signing stays disabled until it is ticked.
+3. Press **Sign + verify** and approve in Xverse. Confirm that Xverse's approval
+   screen does **not** offer to broadcast — the request is sent with
+   `broadcast: false`.
+4. Read the verification verdict and the full checklist.
+5. Open the batch's check list and read every line.
+6. Press **Download verified .hex** and confirm a file is saved.
+
+**Expected result**
+
+- The verdict reads `Verified locally: N/N signatures valid, fee … sats, … vB,
+  txid …`, and the checklist reports each check passing.
+- The final review block shows **input count, input sats, output sats, mining fee,
+  fee as % of input, vsize, destination and txid**, all derived from the serialized
+  PSBT rather than from the object that built it.
+- The destination shown equals the address you entered, exactly.
+- `input sats − mining fee == output sats`. If that arithmetic is off by one sat,
+  it is a critical finding.
+- No platform fee line exists anywhere, because there is no platform fee.
+- On a multi-batch sweep, each batch verifies independently and the batches
+  together cover exactly the selected set with nothing signed twice.
+- The note appears stating that the signed transaction exists only in this tab and
+  that refreshing discards it.
+
+**Independent cross-check (do this, do not skip it):** take the exported `.hex` and
+decode it with a tool that is not this application — for example
+`bitcoin-cli decoderawtransaction` against your own node, or an independent
+decoder. Confirm the input count, output count, destination script and txid match
+what the console displayed. The app's own verifier is independent of its builder,
+but this is the only check that is independent of both.
+
+| Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
+| --- | --- |
+| NOT RUN | NOT RUN |
+
+---
+
+## M8 — Import and export recovery
+
+**Closes:** C8 (recovery after a refresh), and re-confirms C6/C7 against the live UI
+**Chain:** Signet or Testnet, unless you have a genuinely disposable Mainnet transaction. **Real funds at risk:** none if you stop before broadcasting. **Funded wallet:** **yes**.
+
+**Preconditions:** M7 completed, so a verified transaction and its `.hex` file exist.
+
+**Steps**
+
+1. **Simulate the interruption.** With the verified transaction on screen, press the
+   browser's reload button. Record exactly what happens to the signed transaction.
+2. After the reload, reconnect the wallet and locate the **Recover a saved
+   transaction** panel.
+3. Press **Load .hex file** and choose the file saved in M7. Alternatively, paste
+   the hex into the textarea and press **Inspect transaction**.
+4. Read the inspection output.
+5. Confirm that **Broadcast** is disabled, then find what it takes to enable it:
+   the authorization checkbox must be re-ticked for this exact txid, and the
+   `SPEND AS BTC` phrase must be typed again.
+6. If you intend to test the broadcast path, do it in M9 rather than here.
+7. Repeat step 3 with a **deliberately truncated or altered** hex string and record
+   the refusal.
+
+**Expected result**
+
+- **After the reload**, the signed transaction is gone and the console does not
+  pretend otherwise. The sweep must be rebuilt and signed again. This is the
+  documented limitation of gate C8 and it is expected behaviour — record it as a
+  PASS for "behaviour matches the documented limitation", and note in the gate that
+  automatic recovery remains unsupported.
+- The console must have shown, **before** the reload, the note telling you to save
+  the verified bytes for exactly this reason.
+- On import: the status reads `Inspected txid …: N input(s), M output(s), … vB.
+  Nothing has been signed or broadcast.`
+- The panel states plainly what it **cannot** verify. A raw transaction carries no
+  input values, so the fee and input total must be reported as unknown rather than
+  invented.
+- **Importing must not inherit approval.** The checkbox starts empty on every load,
+  including a file that was approved in an earlier session.
+- A truncated or altered hex must be refused with a local check failing and
+  broadcasting blocked — never accepted with a warning.
+- Nothing is broadcast by the act of importing.
+
+| Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
+| --- | --- |
+| NOT RUN | NOT RUN |
+
+---
+
+## M9 — Broadcast status and confirmation tracking
+
+**Closes:** J3 (explicit broadcast, zero platform fee), J4 (verify the txid and its confirmation), and C9 if run on Signet/Testnet
+**Chain:** Signet or Testnet to begin. Mainnet only by your explicit decision, and only after every other case has passed. **Real funds at risk:** **yes, on Mainnet.** **Funded wallet:** **yes**.
+
+**Preconditions:** M7 completed with broadcasting enabled for the chain under
+test. This is the only case that sends anything to a node.
+
+**Steps**
+
+1. In the final review block, tick the per-transaction authorization checkbox,
+   which names the exact txid. Confirm the **Broadcast** button is disabled until
+   the box matches the current txid.
+2. Press **Broadcast transaction** (or **Broadcast Mainnet Transaction**).
+3. Read the outcome banner and record the endpoint that accepted it.
+4. Press **Check confirmation**.
+5. Wait for at least one confirmation, then press **Check confirmation** again.
+6. Open the explorer link and confirm it resolves to the same txid.
+7. Force the ambiguous path: press **Broadcast** a second time if the button is
+   still available, or submit the same `.hex` through the import panel, and record
+   whether the app can be made to submit a duplicate.
+8. On Signet/Testnet, deliberately attempt a broadcast while the broadcast flag is
+   **off** and record the refusal.
+
+**Expected result**
+
+- The outcome reads `Broadcast accepted by <endpoint>. txid <txid>.` or, for a
+  transaction the network already has, `Already known: the network already has txid
+  <txid> (<endpoint>)` — and an already-known response is reported as success, not
+  as a failure.
+- The returned txid must equal the locally verified txid. A mismatch is a critical
+  finding: `[BROADCAST_TXID_MISMATCH]`, nothing further submitted.
+- **Check confirmation** reports either in-mempool or confirmed, with the block
+  height when known. It must never report a fabricated confirmation: an endpoint
+  that returns HTTP 200 without a boolean `confirmed` is treated as inconclusive
+  and the next endpoint is asked (review finding F6).
+- An accepted transaction is memoized per txid per session, so a second press of
+  **Broadcast**, or the same bytes through the import panel, must not submit again.
+- With broadcasting disabled, the button is disabled and the code refuses with
+  `[BROADCAST_DISABLED]` regardless of UI state, with a hint naming the flag to set.
+- A rejected submission is reported verbatim and **never retried**, and the app
+  never signs a replacement.
+
+| Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
+| --- | --- |
+| NOT RUN | NOT RUN |
+
+---
+
+## Results summary
+
+Fill this in as cases are run. Anything still reading `NOT RUN` is still
+unverified, and the gate it belongs to stays **NOT VERIFIED**.
+
+| Case | Gates | Result | Recorded by / date |
+| --- | --- | --- | --- |
+| M1 Wallet connection | B5, J2 | NOT RUN | NOT RUN |
+| M2 Disconnect / reconnect | H9, C5 | NOT RUN | NOT RUN |
+| M3 Network switching | H9, B5 | NOT RUN | NOT RUN |
+| M4 Full inscription scanning | H10, J2 | NOT RUN | NOT RUN |
+| M5 Large PSBT payload handling | B6 | NOT RUN | NOT RUN |
+| M6 User cancellation | B5 | NOT RUN | NOT RUN |
+| M7 Signing and verification | B5, J3 | NOT RUN | NOT RUN |
+| M8 Import / export recovery | C8 | NOT RUN | NOT RUN |
+| M9 Broadcast and confirmation | J3, J4, C9 | NOT RUN | NOT RUN |
+
+## What to do with the results
+
+- Move a gate to **PASS** in [`RELEASE_GATES.md`](RELEASE_GATES.md) only when its
+  case has a real observation behind it. A `PASS` here with `NOT RUN` for
+  evidence is worth nothing and is worse than an honest `NOT VERIFIED`.
+- Record a `FAIL` as a `FAIL`. A failing case is the most valuable output this
+  document can produce, and it should become a regression test in the suite before
+  it is fixed.
+- If a case is `BLOCKED` — no funded wallet, no Signet UTXO, no provider — leave the
+  gate `NOT VERIFIED` and write down what was blocking. Do not substitute a
+  different test and call the gate closed.
+- If anything in this suite reveals a way to build, sign, verify or broadcast
+  without the gates described above, stop and report it privately under
+  [`SECURITY.md`](../SECURITY.md) rather than in a public issue.
