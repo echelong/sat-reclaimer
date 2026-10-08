@@ -228,7 +228,10 @@ server component.
 - `docs/LOCAL_SETUP.md` documents both the simple path (`corepack enable`,
   `pnpm install`, `pnpm local`) and the manual `--frozen-lockfile` path.
 - `docs/MANUAL_ACCEPTANCE.md` is the operator-assisted suite for the parts no
-  offline test can reach (a live Xverse wallet); every case is currently `NOT RUN`.
+  offline test can reach (a live Xverse wallet). All nine cases have been
+  operator-reported and **none is formally verified**; each is recorded as
+  `PROVISIONAL PASS`, which moves no gate. The artifacts that would change that are
+  listed inside it under *Evidence still outstanding*.
 - `docs/AUDIT_HANDOFF.md` is the brief for an independent reviewer, not a review.
 - `docs/RELEASE_NOTES_v0.1.0-rc.1.md` is the prepared, **unpublished**, source-only
   release candidate.

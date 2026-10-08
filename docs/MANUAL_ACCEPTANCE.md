@@ -4,17 +4,54 @@ Operator-assisted tests for the parts of SAT//RECLAIMER that only a real browser
 wallet can exercise: Xverse connection, inscription scanning against the live
 provider, signing, and on-chain confirmation.
 
-**Only M1–M4 have been touched, and only provisionally.** Their result cells read
-`PROVISIONAL PASS` because the operator reported the behaviour; the other five cells
-read `NOT RUN`. This document is a procedure, not a record. Do not read the presence
-of a case as evidence that it passed, and do not close a release gate until its
-result cell holds a real, checkable observation.
+**All nine cases have now been exercised and reported by the operator, and none is
+formally verified.** Every result cell below reads `PROVISIONAL PASS`: the operator
+reports the behaviour worked, but the artifacts that would let someone else check
+that report — the chain, the browser and wallet versions, a redacted screenshot, the
+exact console text, the scan and signature figures, and a txid for anything that
+reached a node — have not been supplied for any case. **No release gate has moved on
+the strength of these reports, and none should.** This document is a procedure, not
+a record. Do not read the presence of a case as evidence that it passed, and do not
+close a release gate until its result cell holds a real, checkable observation.
 
 The gates these cases close are listed in [`RELEASE_GATES.md`](RELEASE_GATES.md):
 **B5**, **B6**, **C8**, **C9**, **H9**, **H10**, **J2**, **J3**. All of them are
 currently **NOT VERIFIED** for the same reason — this repository cannot drive a
 browser extension, and no automated test can stand in for a wallet the user
 actually approves.
+
+## Evidence still outstanding
+
+Every case below is operator-reported. This is the complete list of what has been
+asked for. **Nothing in it is a seed phrase, a private key, a wallet file or any
+other confidential material, and none will ever be requested.** A redacted
+screenshot is the right way to share a console state: redact addresses and any txid
+that is not already public, and never share anything that could reconstruct a key.
+
+| # | Item | Promotes | Can move |
+| --- | --- | --- | --- |
+| 1 | The **network** actually used, per case (Signet / Testnet / Mainnet) | all | decides whether **C9** is even applicable |
+| 2 | **Browser and Xverse versions**, and the commit built (`git rev-parse --short HEAD`) | all | required before *any* row becomes a formal PASS |
+| 3 | Whether the wallet **held inscription UTXOs**, with `Indexer reported`, `Inscriptions retrieved`, `Unique UTXOs`, `Pages read`, `Total sats`, and the rescan's numbers | M4 | **H10**, J2 |
+| 4 | The **largest PSBT input count Xverse accepted**, the largest it refused, and the exact refusal text | M5 | **B6** |
+| 5 | The **exact signing verdict** (`Verified locally: N/N signatures valid, fee … sats, … vB, txid …`) and the independent decode cross-check | M7 | **B5**, **J3** |
+| 6 | What the reload did to the signed transaction, the import status line, and the truncated-hex refusal | M8 | nothing — **C8 does not follow from M8** (see the M8 row) |
+| 7 | The **M9 txid and its network**, plus the accepting endpoint and the confirmation height | M9 | **J3**, and **C9** if the chain was Signet or Testnet |
+
+**If only one item can be supplied, supply 7.** It is the only artifact on this list
+that a third party can check without trusting whoever supplied it: a txid on a stated
+chain resolves on a public explorer to a transaction, a block height and a fee,
+independently of this repository and of the operator. Every other item is testimony —
+worth recording, but it cannot close a gate on its own.
+
+Item 3 matters more than it looks. Earlier in this milestone the wallet under test
+was reported as already swept, so whether the M4 scan saw any inscription UTXOs at
+all is unresolved — and if it did not, the case exercised the empty-inventory path
+only and **H10** (pagination past the provider's page size) was never reached.
+
+When item 7 arrives, this repository will look the transaction up on public
+explorers itself and record what they return. It will not create, resubmit or
+rebroadcast any transaction to obtain that evidence.
 
 ## What the historical Mainnet sweep does and does not cover
 
@@ -329,7 +366,7 @@ real-wallet figure, separate from the synthetic one.
 
 | Largest batch accepted by Xverse | Largest refused, and the exact refusal text | Result (PASS/FAIL/BLOCKED) | Evidence |
 | --- | --- | --- | --- |
-| NOT RUN | NOT RUN | NOT RUN | NOT RUN |
+| **Not recorded** | **Not recorded** | **PROVISIONAL PASS** — operator-reported, not yet formally verified | Operator reports the large-payload case passed at commit `c9ef05b` on 2026-10-08, but **no input count was supplied for either column**. Gate **B6** *is* the requirement that a real wallet accepted a stated number of inputs, so a report without the number cannot close it: **B6 stays NOT VERIFIED**. When the count arrives it belongs in [`PERFORMANCE.md`](PERFORMANCE.md) beside the synthetic table, labelled as the real-wallet figure |
 
 ---
 
@@ -367,7 +404,7 @@ real-wallet figure, separate from the synthetic one.
 
 | Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
 | --- | --- |
-| NOT RUN | NOT RUN |
+| **PROVISIONAL PASS** — operator-reported, not yet formally verified | Operator reports the cancellation case passed at commit `c9ef05b` on 2026-10-08, including the signing-cancellation steps (so a sweep was built and a funded wallet was in use). **Outstanding before this can be a formal PASS:** the exact bracketed code for each refusal (`[WALLET_USER_REJECTED]` for a rejection, `[WALLET_TIMEOUT]` for a popup left unanswered, and what a dismissed connect popup actually produced), the state observed after the rejection, the chain, browser and Xverse versions, and a redacted screenshot. Gate **B5** stays **NOT VERIFIED** |
 
 ---
 
@@ -418,7 +455,7 @@ but this is the only check that is independent of both.
 
 | Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
 | --- | --- |
-| NOT RUN | NOT RUN |
+| **PROVISIONAL PASS** — operator-reported, not yet formally verified | Operator reports signing and verification passed at commit `c9ef05b` on 2026-10-08. **Outstanding before this can be a formal PASS:** the exact `Verified locally: N/N signatures valid, fee … sats, … vB, txid …` line, the input/output sats it reported, whether the independent decode cross-check was performed and what it showed, the chain, browser and Xverse versions, and a redacted screenshot. Gates **B5** and **J3** stay **NOT VERIFIED** — and note that this case deliberately does not broadcast, so it cannot evidence on-chain confirmation either |
 
 ---
 
@@ -467,7 +504,7 @@ but this is the only check that is independent of both.
 
 | Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
 | --- | --- |
-| NOT RUN | NOT RUN |
+| **PROVISIONAL PASS** — operator-reported, not yet formally verified | Operator reports the import/export recovery case passed at commit `c9ef05b` on 2026-10-08. **Outstanding before this can be a formal PASS:** what the reload actually did to the signed transaction, the import status line (`Inspected txid …: N input(s), M output(s), … vB. Nothing has been signed or broadcast.`), the truncated-hex refusal text, and a redacted screenshot. **Gate C8 does not follow from this case and stays NOT VERIFIED:** C8 requires a signed transaction to survive a refresh with *no user action*, which is deliberately not implemented. A successful manual recovery is the documented alternative to C8, not proof of it |
 
 ---
 
@@ -516,32 +553,41 @@ test. This is the only case that sends anything to a node.
 
 | Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
 | --- | --- |
-| NOT RUN | NOT RUN |
+| **PROVISIONAL PASS** — operator-reported, not yet formally verified | Operator reports broadcast and confirmation tracking passed at commit `c9ef05b` on 2026-10-08. **Outstanding before this can be a formal PASS, and the item that matters most on this whole page: the txid and the network it was broadcast on.** Also outstanding: the outcome banner wording, the endpoint that accepted it, the confirmation height, whether the duplicate-submission attempt was actually made and refused, the chain, browser and Xverse versions, and a redacted screenshot. Gate **J3** stays **NOT VERIFIED**; **C9** stays **NOT VERIFIED** unless the chain was Signet or Testnet *and* the txid is supplied — an operator-reported Mainnet confirmation is not independent proof of anything on chain |
 
 ---
 
 ## Results summary
 
-Fill this in as cases are run. Anything still reading `NOT RUN` is still
+Filled in as cases are run. A row whose right-hand column says **No** is still
 unverified, and the gate it belongs to stays **NOT VERIFIED**.
 
-| Case | Gates | Result | Recorded by / date |
+| Case | Gates | Operator-reported | Formally verified |
 | --- | --- | --- | --- |
-| M1 Wallet connection | B5, J2 | **PROVISIONAL PASS** (operator-reported, 2026-10-08, `c9ef05b`, plan mode) — pending chain, versions, screenshot, status line | Operator report only; not yet checkable |
-| M2 Disconnect / reconnect | H9, C5 | **PROVISIONAL PASS** (operator-reported, 2026-10-08, `c9ef05b`, plan mode) — pending chain, versions, screenshot, exact status line | Operator report only; not yet checkable |
-| M3 Network switching | H9, B5 | **PROVISIONAL PASS** (operator-reported, 2026-10-08, `c9ef05b`, plan mode) — pending networks used, versions, screenshot, exact refusal text | Operator report only; not yet checkable |
-| M4 Full inscription scanning | H10, J2 | **PROVISIONAL PASS** (operator-reported, 2026-10-08, `c9ef05b`, plan mode) — pending scan statistics, rescan figures, chain, versions, screenshot | Operator report only; not yet checkable |
-| M5 Large PSBT payload handling | B6 | NOT RUN | NOT RUN |
-| M6 User cancellation | B5 | NOT RUN | NOT RUN |
-| M7 Signing and verification | B5, J3 | NOT RUN | NOT RUN |
-| M8 Import / export recovery | C8 | NOT RUN | NOT RUN |
-| M9 Broadcast and confirmation | J3, J4, C9 | NOT RUN | NOT RUN |
+| M1 Wallet connection | B5, J2 | PROVISIONAL PASS — 2026-10-08, `c9ef05b` | **No** — chain, versions, screenshot and status line outstanding |
+| M2 Disconnect / reconnect | H9, C5 | PROVISIONAL PASS — 2026-10-08, `c9ef05b` | **No** — the same, plus the exact status line and scan numbers |
+| M3 Network switching | H9, B5 | PROVISIONAL PASS — 2026-10-08, `c9ef05b` | **No** — the two networks used and the exact refusal text outstanding |
+| M4 Full inscription scanning | H10, J2 | PROVISIONAL PASS — 2026-10-08, `c9ef05b` | **No** — the scan statistics and rescan figures outstanding |
+| M5 Large PSBT payload handling | B6 | PROVISIONAL PASS — 2026-10-08, `c9ef05b` | **No** — the accepted input count was never recorded |
+| M6 User cancellation | B5 | PROVISIONAL PASS — 2026-10-08, `c9ef05b` | **No** — the exact refusal codes outstanding |
+| M7 Signing and verification | B5, J3 | PROVISIONAL PASS — 2026-10-08, `c9ef05b` | **No** — the verification verdict outstanding |
+| M8 Import / export recovery | C8 | PROVISIONAL PASS — 2026-10-08, `c9ef05b` | **No** — and C8 is not addressed by this case at all |
+| M9 Broadcast and confirmation | J3, J4, C9 | PROVISIONAL PASS — 2026-10-08, `c9ef05b` | **No** — no txid and no network supplied |
+
+**Operator-reported: 9/9. Formally verified: 0/9.** Nine reports that a human saw
+something work are real information, and they are recorded here rather than
+discarded — but the two columns are not the same claim, and only the right-hand one
+moves a gate.
 
 ## What to do with the results
 
 - Move a gate to **PASS** in [`RELEASE_GATES.md`](RELEASE_GATES.md) only when its
-  case has a real observation behind it. A `PASS` here with `NOT RUN` for
-  evidence is worth nothing and is worse than an honest `NOT VERIFIED`.
+  case is **formally verified** — a checkable artifact, not a report. A gate moved
+  on an operator report alone is worth nothing and is worse than an honest
+  `NOT VERIFIED`, because it retires a question that is still open.
+- An operator report still counts for something, and it is recorded as
+  `PROVISIONAL PASS` rather than omitted. It tells the next reader where to look
+  first; it does not tell them the answer.
 - Record a `FAIL` as a `FAIL`. A failing case is the most valuable output this
   document can produce, and it should become a regression test in the suite before
   it is fixed.

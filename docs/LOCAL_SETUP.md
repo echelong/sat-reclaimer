@@ -28,6 +28,17 @@ no database, no server, no Docker.
 | macOS | `brew install node@22` | `corepack enable` |
 | Windows | `winget install OpenJS.NodeJS.LTS` | `corepack enable` |
 
+**Support status, stated plainly.** Only **Linux (Fedora 43, x86_64)** has been
+installed, built, run and exercised end to end. **Windows and macOS are NOT
+VERIFIED**: no machine was available on which to test them, so the commands above
+are the *expected* ones for those systems, not a tested result. Nothing in the
+toolchain is platform-specific — it is Node.js and `pnpm`, and
+`scripts/start-local.mjs` handles the Windows `pnpm.cmd` shim — but an expectation
+is not a test. Gates K9/K10 in [`docs/RELEASE_GATES.md`](RELEASE_GATES.md) stay
+open until someone runs the steps above on those systems. If you do, an issue with
+your OS version, Node version and the output of `pnpm local:check` is genuinely
+useful.
+
 `corepack` ships with Node and reads this repository's pinned
 `packageManager: pnpm@10.17.1`, so doing it this way gets you the exact pnpm the
 project was tested with rather than whatever is newest. If you prefer to install

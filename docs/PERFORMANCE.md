@@ -98,6 +98,12 @@ already-spent input.
 | Evidence | Inputs | Batches | Result |
 | --- | ---: | ---: | --- |
 | Confirmed Mainnet transaction `0a7d30ca…57e1a` (block 970454) | 1,079 | 1 | confirmed on chain, 62,087 vB, 62,087 sat fee |
+| Operator-reported large-payload signing run (case M5, 2026-10-08) | **not recorded** | — | the operator reports it working but supplied no input count, so this row carries no figure and is **not** evidence for gate B6 |
+
+Only the first row is real-wallet data. The second is a report with no number
+attached, and it is listed here rather than deleted so the next reader can see that
+the question was asked and not answered — see *Evidence still outstanding* in
+[`docs/MANUAL_ACCEPTANCE.md`](MANUAL_ACCEPTANCE.md).
 
 That is on-chain evidence, not a re-observed wallet approval: this environment
 cannot drive the browser wallet extension, so the wallet-side approval was not

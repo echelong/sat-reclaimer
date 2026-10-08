@@ -43,8 +43,8 @@ and the final release report.
 | B2 | Ordinals address proven to be the BIP86 output of the reported public key | **PASS** | `src/lib/bitcoin.ts`; `tests/bitcoin.test.ts` |
 | B3 | Reported wallet network reconciled against the requested network | **PASS** | `src/lib/xverse.ts` (mismatch stops the flow) |
 | B4 | Only Xverse / Sats Connect is claimed as supported | **PASS** | Stated in README, `/privacy`, `/open-source`, `docs/RISK.md` |
-| B5 | A live wallet approval exercised end-to-end | **NOT VERIFIED** | This environment cannot drive the browser extension. The only real-wallet data point is the confirmed Mainnet transaction (A10), whose wallet-side approval was observed by the operator, not re-observed here. In M6 the operator reported M1 (connect) and M3 (network switching, including the Mainnet-locked refusal) working, but those are recorded as **PROVISIONAL PASS** in `docs/MANUAL_ACCEPTANCE.md` — no chain, browser/Xverse versions, screenshot or exact status text was supplied, so the gate stays open |
-| B6 | The provider's real PSBT payload limit is proven | **NOT VERIFIED** | Synthetic signing does not exercise the provider request-size limit. Largest real-wallet-approved count recorded separately in `docs/PERFORMANCE.md`. **Release blocker for the largest wallets.** |
+| B5 | A live wallet approval exercised end-to-end | **NOT VERIFIED** | This environment cannot drive the browser extension. The only real-wallet data point with an artifact behind it is the confirmed Mainnet transaction (A10). In M7 the operator reported **all nine** acceptance cases working, including live connect (M1) and live signing (M7), and those are recorded as **PROVISIONAL PASS** in `docs/MANUAL_ACCEPTANCE.md` — but no chain, browser/Xverse versions, screenshot, exact status text or verification verdict was supplied for any of them, and a provisional result moves no gate. What is needed is listed there as items 1–2 and 5 |
+| B6 | The provider's real PSBT payload limit is proven | **NOT VERIFIED** | Synthetic signing does not exercise the provider request-size limit. The largest real-wallet-approved count with an artifact is 1,079, recorded in `docs/PERFORMANCE.md`. In M7 the operator reported the large-payload case (M5) working, recorded as **PROVISIONAL PASS** — but this gate *is* the requirement that a stated number of inputs was accepted, and **no number was supplied**, so it stays open. **Release blocker for the largest wallets.** |
 
 ## C — Transaction reliability
 
@@ -57,8 +57,8 @@ and the final release report.
 | C5 | Post-scan wallet/network switch, disconnect and reconnect handled | **PASS** | `src/components/Reclaimer.tsx`; covered by component behaviour and `tests/wallet.test.ts` |
 | C6 | A verified raw transaction can be exported before the window is lost | **PASS** | *Download verified .hex* writes the finalized raw transaction; a raw transaction is public network data and contains no key material |
 | C7 | An exported transaction can be brought back and broadcast without signing again | **PASS** | The import panel requires a fresh per-`txid` acknowledgement and the `SPEND AS BTC` phrase, decodes and re-derives locally, never inherits prior approval, never auto-broadcasts, and shares the broadcast ledger |
-| C8 | A signed transaction survives a page refresh with no user action | **NOT VERIFIED** | Deliberately not implemented — persisting a near-broadcast transaction is the failure mode this project forbids, and the safe design is written up in `docs/PUBLIC_BETA.md`. **A user who did not download the `.hex` before the refresh must sign again** |
-| C9 | Signet/Testnet end-to-end sweep | **NOT VERIFIED** | No inscription-bearing Signet UTXO exists to spend; cannot be demonstrated in this environment |
+| C8 | A signed transaction survives a page refresh with no user action | **NOT VERIFIED** | Deliberately not implemented — persisting a near-broadcast transaction is the failure mode this project forbids, and the safe design is written up in `docs/PUBLIC_BETA.md`. **A user who did not download the `.hex` before the refresh must sign again.** The operator-reported M8 result does **not** close this gate and is not offered as evidence for it: M8 tests deliberate manual recovery through the import panel, which is the documented alternative to C8, not survival without user action |
+| C9 | Signet/Testnet end-to-end sweep | **NOT VERIFIED** | No inscription-bearing Signet UTXO exists to spend; cannot be demonstrated in this environment. The operator reported an end-to-end broadcast (M9) but did not state **which chain** it ran on, and this gate applies only if that chain was Signet or Testnet. Supply the network and the txid and it can be assessed; until then it stays open |
 | C10 | Recovering an exported transaction is exercised, not just implemented: inspection makes no network request, submission is bound to the exact authorized txid, and repeated recovery submits at most once | **PASS** | `tests/imported-transaction.test.ts` → `describe('recovered transaction safety')` (5 tests): inspection performs zero network calls; broadcast is refused while disabled (0 requests); a mismatched txid fails with `BROADCAST_TXID_MISMATCH` (0 requests); two recoveries of the same bytes submit at most once; the txid is derived deterministically (whitespace/`0x`/case-insensitive inputs agree, a flipped prevout byte does not) |
 
 ## D — Large-wallet acceptance
@@ -113,7 +113,7 @@ and the final release report.
 | G4 | robots/sitemap rules and canonical/OG metadata | **PASS** | `app/robots.ts`, `app/sitemap.ts`, `NEXT_PUBLIC_SITE_URL` (falls back to localhost until the domain exists) |
 | G5 | `NEXT_PUBLIC_*` treated as public config, not an authorization boundary | **PASS** | Enforced in code: broadcast refuses regardless of UI state; server-side is the authority |
 | G6 | Rate limiting, where server routes exist | **PASS** | There are no server routes — no `route.ts` anywhere in the tree — so there is nothing to rate limit; broadcast submissions go from the browser straight to public nodes. Revisit the moment a server route is added |
-| G7 | Staging deployment protected from public access and indexing | **NOT VERIFIED** | No deployment performed; the production policy in this repo allows indexing and must be narrowed for a staging host |
+| G7 | Staging deployment protected from public access and indexing | **NOT VERIFIED** | No deployment was performed and none is planned: distribution is the repository plus a local process, and `docs/PUBLIC_BETA.md` and `CLAUDE.md` state that no hosted site, domain or account is wanted. The gate is therefore proposed for an **explicit scope change** — see *Proposed scope change: G7* below. **No status change has been applied**: it stays NOT VERIFIED until the owner decides, and silently converting it to PASS would be the one edit this document must never make |
 | G8 | Production feature level reports the true public-launch state | **PASS** | `docs/PUBLIC_BETA.md` states the site is **not** ready for unrestricted public Mainnet reclaim while gates A11/E7/B6 are open |
 
 ## H — Browser accessibility and performance
@@ -131,8 +131,8 @@ Chromium over the Chrome DevTools Protocol.
 | H6 | No browser memory leak across the flows | **PASS** | 10 alternating `/` ↔ `/app` cycles with a forced GC between samples: JS heap 3 → 12 MB and then flat (11/12/11/12 MB over the last four), i.e. bundle load then steady state, not monotonic growth |
 | H7 | Wallet-unavailable messaging and error states | **PASS** | Connect pressed with no provider installed: `REFUSED No Xverse provider was found. Install the Xverse extension, or open this page inside the Xverse in-app browser. [WALLET_NOT_INSTALLED]` — fail-closed, actionable, not a silent no-op |
 | H8 | Landing-page demo arithmetic matches the confirmed sweep | **PASS** | Demo button exercised in the browser: 8 result lines, 601,214 sats in / 62,087 sats fee / 539,127 sats net — the confirmed on-chain figures |
-| H9 | Xverse disconnect/reconnect and wallet network switches | **NOT VERIFIED** | Requires the extension in a real browser profile. The code paths are covered by `tests/wallet.test.ts`. Cases M2 (disconnect/reconnect) and M3 (network switching) were exercised by the operator in M6 and reported working, but both are recorded as **PROVISIONAL PASS** in `docs/MANUAL_ACCEPTANCE.md`; a provisional result moves no gate, so this stays **NOT VERIFIED** until a checkable observation (versions, screenshot, exact messages) is recorded |
-| H10 | Scan pagination and large-wallet performance against a live wallet | **NOT VERIFIED** | Requires a funded ordinal wallet; the planner is measured in `docs/PERFORMANCE.md`. The operator ran a live scan in M6 (case M4) and reported it working, recorded as **PROVISIONAL PASS** — but no `Pages read` figure was captured, so **crossing the provider's page size was never observed** and this gate stays open |
+| H9 | Xverse disconnect/reconnect and wallet network switches | **NOT VERIFIED** | Requires the extension in a real browser profile. The code paths are covered by `tests/wallet.test.ts`. Cases M2 (disconnect/reconnect) and M3 (network switching) were exercised by the operator and reported working, but both are recorded as **PROVISIONAL PASS** in `docs/MANUAL_ACCEPTANCE.md`; a provisional result moves no gate, so this stays **NOT VERIFIED** until a checkable observation (versions, screenshot, the two networks used, exact status line) is recorded |
+| H10 | Scan pagination and large-wallet performance against a live wallet | **NOT VERIFIED** | Requires a funded ordinal wallet; the planner is measured in `docs/PERFORMANCE.md`. The operator ran a live scan (case M4) and reported it working, recorded as **PROVISIONAL PASS** — but no `Pages read` figure was captured, so **crossing the provider's page size was never observed**, and whether the wallet held inscription UTXOs at all is unresolved. This gate stays open |
 
 ### Defect found and fixed during this pass
 
@@ -163,8 +163,8 @@ elements extending past the device width.
 | # | Requirement | Status | Evidence |
 | --- | --- | --- | --- |
 | J1 | A stranger can find the repo, read the code and understand the risks | **PASS** | The repository is public and topic-tagged; `README.md` leads with what the tool does, what it cannot detect and what it costs, and links `docs/RISK.md` and `docs/RELEASE_GATES.md`. This covers the artifact being usable and honest, not promotion, which has not happened |
-| J2 | A user connects Xverse, scans hundreds/thousands of inscriptions and sees gross BTC, fees and net output | **NOT VERIFIED** | Requires a live wallet and a funded ordinal wallet; synthetic only in this repo. M6 cases M1 (connect) and M4 (scan) were reported working by the operator and are recorded as **PROVISIONAL PASS**, but with no chain, versions, screenshot or scan statistics — including whether the wallet held any inscription UTXO at all — so this gate stays open |
-| J3 | The user independently approves in Xverse and explicitly broadcasts, paying zero platform fees | **NOT VERIFIED** | Requires a live wallet; no platform fee exists in code or pricing |
+| J2 | A user connects Xverse, scans hundreds/thousands of inscriptions and sees gross BTC, fees and net output | **NOT VERIFIED** | Requires a live wallet and a funded ordinal wallet; synthetic only in this repo. The operator reported cases M1 (connect) and M4 (scan) working and both are recorded as **PROVISIONAL PASS**, but with no chain, versions, screenshot or scan statistics — including whether the wallet held any inscription UTXO at all — so this gate stays open. "Hundreds/thousands" is the requirement, and no count was supplied |
+| J3 | The user independently approves in Xverse and explicitly broadcasts, paying zero platform fees | **NOT VERIFIED** | Requires a live wallet; no platform fee exists in code or pricing. The operator reported signing (M7) and broadcast (M9) working, both recorded as **PROVISIONAL PASS**. Neither was accompanied by the verification verdict or a txid, so the approval and the broadcast remain unreplicated — a report that a transaction was broadcast is not the same artifact as a txid that resolves on an explorer |
 | J4 | The user can verify the TXID and its confirmation | **PASS** | *Check confirmation* action; verified on chain for the confirmed sweep |
 
 ## K — Local distribution and installation
@@ -206,14 +206,25 @@ but **unpublished** release candidate.
   repository.
 - **NOT VERIFIED (no evidence available here):** A11, B5, B6, C8, C9, E7, E11,
   G7, H9, H10, J2, J3, K9, K10.
-- **Re-checked in M6 (2026-10-08): 4 cases operator-reported, no gate status
-  changed.** The operator reported cases M1 (connect), M2 (disconnect/reconnect),
-  M3 (network switching) and M4 (live scan) working in a real browser. Each is
-  recorded as a **PROVISIONAL PASS** in `docs/MANUAL_ACCEPTANCE.md` with the chain,
-  versions, screenshot, exact messages and scan figures still outstanding, and a
-  provisional result moves no gate — so **B5**, **H9**, **H10** and **J2** all stay
-  **NOT VERIFIED**. **C5** already stood **PASS** on the component behaviour and
-  `tests/wallet.test.ts`, not on this run.
+- **Re-checked in M7 (2026-10-08): 9/9 cases operator-reported, 0 gates moved.**
+  The operator reports every case in `docs/MANUAL_ACCEPTANCE.md` working, M1 through
+  M9, and each is recorded there as a **PROVISIONAL PASS** with the chain, versions,
+  screenshot, exact messages, scan figures and txid still outstanding. A provisional
+  result deliberately moves no gate, so **the counts below are unchanged: 80 PASS,
+  14 NOT VERIFIED, 0 FAIL.** The artifact that would move each open gate is listed
+  in `docs/MANUAL_ACCEPTANCE.md` under *Evidence still outstanding*; item 7 (the M9
+  txid and its network) is the only one a third party can check unaided.
+- **Three distinctions this milestone had to keep separate.** All three were
+  checked, and all three stay open:
+  - **M8 recovery does not close C8.** C8 requires a signed transaction to survive a
+    refresh *with no user action*, which is deliberately not implemented. A
+    successful manual import is the documented alternative to C8, not evidence for
+    it.
+  - **An M5 report does not close B6.** B6 is the requirement that a *stated* number
+    of inputs was accepted by the real provider. No number was supplied, so there is
+    nothing to check.
+  - **An M9 report does not prove on-chain confirmation.** Only a txid on a stated
+    chain does, and none was supplied.
 
 ### Unrestricted public Mainnet launch is blocked by
 
@@ -237,3 +248,117 @@ but **unpublished** release candidate.
 The public repository can still ship as an independently useful, inspectable,
 self-buildable artifact while these are open. What must not ship is an
 unrestricted, Mainnet-broadcast-enabled public site.
+
+---
+
+### Proposed scope change: G7 (staging deployment) — awaiting owner approval
+
+G7 asks that a staging deployment be protected from public access and indexing. It
+was written when a hosted site was the assumed distribution model. The product is
+now distributed **local-first and GitHub-only**: there is no hosted site, no domain,
+no account, no server component, and `NEXT_PUBLIC_SITE_URL` is deliberately unset
+(`docs/PUBLIC_BETA.md`).
+
+Under that model there is no staging surface to protect, so G7 is not *unmet* — it is
+**out of scope**. That is a change to the requirement rather than a discovery of
+evidence, so it needs a decision instead of an edit. **No status change has been
+applied: G7 remains NOT VERIFIED.**
+
+- **Option A (recommended): retire G7 and replace it** with a narrower, testable
+  requirement — *"no artifact, configuration file or documentation in the tree
+  enables a publicly reachable Mainnet-broadcast deployment by default."* That is
+  already partly enforced by K2, K3 and the CI build that forces all three product
+  flags `false`; the replacement gate would state it as the requirement and carry
+  that evidence.
+- **Option B: keep G7 as written** and accept that it stays NOT VERIFIED for as long
+  as no hosted deployment exists.
+
+The gate list is deliberately not edited to make this look settled.
+
+---
+
+## Path to closing the remaining gates
+
+Fourteen gates are open. Each has a concrete route; none has a shortcut. Nothing in
+this section is a status change.
+
+### 1. Independent Bitcoin security audit — A11, E7 (the hard blocker)
+
+- **Brief:** `docs/AUDIT_HANDOFF.md` — trust boundaries, the six things worth
+  attacking, and what is deliberately out of scope. Written for the reviewer.
+- **What to commission:** a fixed-scope engagement (roughly 2–4 weeks) with a
+  written report, pinned to the commit the release candidate names. Bitcoin/PSBT
+  depth matters more than general web-app experience; the highest-value targets are
+  the PSBT builder/verifier split and the broadcast authorization path.
+- **Who:** any reviewer who did not write this code. The author's own review
+  (`docs/SECURITY_REVIEW.md`) does not count and is not offered as if it did.
+- **Cost of not doing it:** unrestricted public Mainnet reclaim stays blocked. The
+  repository can still be published as an inspectable artifact, which is what it is
+  today.
+- **Exit:** the gates flip only on a delivered report, whatever it says. Findings
+  become regression tests before the gate moves, exactly as F1–F10 did.
+
+### 2. Live-wallet evidence reconciliation — B5, B6, C9, H9, H10, J2, J3
+
+One checklist closes up to seven gates, and it is already written:
+`docs/MANUAL_ACCEPTANCE.md` → **Evidence still outstanding**, items 1–7. Ordered by
+value:
+
+| Priority | Artifact | Gates it can flip |
+| --- | --- | --- |
+| 1 | M9 **txid + network** (item 7) — the only artifact a third party can check unaided | J3, and C9 if the chain was Signet/Testnet |
+| 2 | **Largest input count Xverse accepted** (item 4) | B6 |
+| 3 | **M7 verification verdict** and the independent decode cross-check (item 5) | B5, J3 |
+| 4 | **M4 scan statistics and the rescan** (item 3) | H10, J2 |
+| 5 | **Chain, browser and Xverse versions, redacted screenshots** (items 1–2) | required before any row becomes a formal PASS |
+| 6 | **M8 reload/import/refusal details** (item 6) | nothing — C8 stays open by design |
+
+When the artifacts arrive the acceptance rows become `PASS` and the gates above move
+with them. Until then the reports are recorded as `PROVISIONAL PASS` and nothing
+moves.
+
+### 3. Non-GitHub security contact — E11
+
+Three options. This is an owner decision, not a code change:
+
+- **A (recommended, no new infrastructure):** publish a PGP key in `SECURITY.md` with
+  its fingerprint, alongside the existing GitHub channel. A key needs no mailbox and
+  costs nothing.
+- **B:** a dedicated security address on a mailbox the owner already controls, with
+  PGP preferred and unencrypted accepted as a fallback.
+- **C:** change nothing and record the gap as an accepted risk, with the reasoning.
+  That is a legitimate outcome, but it has to be *written down as a decision* rather
+  than left as an omission.
+
+E11 stays **NOT VERIFIED** until one of these is chosen and stated in `SECURITY.md`.
+
+### 4. Windows installation verification — K9
+
+- **Environment:** a Windows 11 machine or VM. No special hardware; the app is a
+  local Node process.
+- **Steps:** `winget install OpenJS.NodeJS.LTS` → `corepack enable` → `git clone` →
+  `pnpm install --frozen-lockfile` → `pnpm local:check` (expect exit 0) →
+  `pnpm local --mode=plan` → confirm the printed URL is `http://127.0.0.1:3000` and
+  that the LAN address is refused from a second device.
+- **What it actually tests:** the `pnpm.cmd` shim path `scripts/start-local.mjs`
+  branches on (`shell: process.platform === 'win32'`), path handling in the
+  launcher, and that no script depends on a POSIX shell.
+- **Exit:** screenshots of `pnpm local:check` and of the served console, recorded
+  against the tag. K9 then flips to PASS.
+
+### 5. macOS installation verification — K10
+
+- **Environment:** any macOS, Apple silicon or Intel.
+- **Steps:** `brew install node@22` → `corepack enable` → `git clone` →
+  `pnpm install --frozen-lockfile` → `pnpm local:check` → `pnpm local --mode=plan`
+  → confirm loopback-only binding and that the console renders.
+- **Exit:** the same two screenshots. K10 then flips to PASS.
+
+### 6. Remaining local-first distribution gates
+
+- **G7** — the proposed scope change above. Get a decision; do not quietly convert it.
+- **K9 / K10** — the plans above; they are the only distribution gates still open.
+- **E11** — the security-contact decision above.
+- Everything else in K (K1–K8, K11) is already PASS with in-repo evidence, and the
+  local distribution path needs no hosted deployment, so no deployment work is
+  outstanding for a GitHub-only product.

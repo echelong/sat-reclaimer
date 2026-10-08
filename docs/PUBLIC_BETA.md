@@ -103,7 +103,7 @@ Ordered by what would actually hurt a user.
 
 | # | Blocker | Why it matters | Where |
 | --- | --- | --- | --- |
-| 1 | **Live wallet behaviour at scale is still unexercised from this repository.** | A real 1,079-input sweep **is** confirmed on chain (block 970454), which proves the flow end to end from the operator's side. What no in-repo test can prove is what Xverse's own request-size limit will accept for a multi-thousand-input sweep — local signing with a deterministic key does not exercise the provider. Recorded as gate B5/B6. | [`docs/RELEASE_GATES.md`](RELEASE_GATES.md), [`docs/PERFORMANCE.md`](PERFORMANCE.md) |
+| 1 | **Live wallet behaviour at scale is still unexercised *with an artifact*.** | A real 1,079-input sweep **is** confirmed on chain (block 970454), which proves the flow end to end from the operator's side. The operator now reports **all nine** manual acceptance cases working, including a large-payload signing run — but no chain, browser/Xverse version, screenshot, accepted input count or txid was recorded, so nothing independently backs those reports and gates **B5, B6, C9, H9, H10, J2, J3** stay open. The single most valuable missing artifact is the **M9 txid and the network it settled on**: it is the only one a third party can check without trusting the reporter. | [`docs/RELEASE_GATES.md`](RELEASE_GATES.md), [`docs/MANUAL_ACCEPTANCE.md`](MANUAL_ACCEPTANCE.md), [`docs/PERFORMANCE.md`](PERFORMANCE.md) |
 | 2 | **`NEXT_PUBLIC_SITE_URL` is unset.** | Under the local distribution model this does not matter — nothing is deployed and the app is served from `127.0.0.1`. It only becomes relevant if a hosted page is ever published, in which case canonical URLs, `og:url` and `sitemap.xml` would otherwise fall back to `http://localhost:3000`. | `app/layout.tsx`, `app/sitemap.ts`, `app/robots.ts` |
 | 3 | **No independent security review.** | The landing page states this plainly under "Not audited"; it must stay stated until an audit exists. An internal review exists and is worth reading, but it is not an external one. | `SECURITY.md`, [`docs/SECURITY_REVIEW.md`](SECURITY_REVIEW.md), Trust section |
 | 4 | **Broadcast endpoints are third-party public nodes.** | mempool.space and blockstream.info see the raw transaction before/alongside the network. Behaviour under rate limiting and outage is handled but untested against the live services. | `src/lib/broadcast.ts` |
@@ -116,8 +116,10 @@ Ordered by what would actually hurt a user.
 ## Do not do these
 
 - Do not deploy a publicly reachable Mainnet-broadcast-enabled site while gates
-  A11, B6 and E8 are open. Publishing the repository is exactly what we want;
-  publishing an unrestricted real-BTC interface is not.
+  A11/E7, B6 and E11 are open. (E8, the GitHub private-reporting channel, is
+  closed and verified; E11, a contact outside GitHub, is not.) Publishing the
+  repository is exactly what we want; publishing an unrestricted real-BTC interface
+  is not.
 - Do not describe the product as audited, certified, verified, or risk-free.
 - Do not claim a previously broadcast transaction confirmed without checking its
   on-chain status on independent nodes.

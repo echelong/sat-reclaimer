@@ -52,23 +52,32 @@ Mainnet broadcasting in any public deployment, while those gates are open.
 
 ## Current priority
 
-M5 — public local release readiness. The repository is published under MIT at
-`github.com/echelong/sat-reclaimer` and is distributed as a **locally runnable**
-app: clone it, run `pnpm local`, connect Xverse. There is no hosted site, no
-domain and no account, and none is wanted. The remaining work is the verification
-that cannot be done from this machine:
+M7 — final acceptance and the `v0.1.0-rc.1` release candidate. The repository is
+published under MIT at `github.com/echelong/sat-reclaimer` and is distributed as a
+**locally runnable** app: clone it, run `pnpm local`, connect Xverse. There is no
+hosted site, no domain and no account, and none is wanted.
 
-1. A live Xverse acceptance run on this version, following
-   `docs/MANUAL_ACCEPTANCE.md` (connect/disconnect, network switching, full scans,
-   large-payload signing, cancellation, signing/verification, import/export
-   recovery, broadcast status). The wallet's real PSBT payload limit is unproven —
-   `docs/RELEASE_GATES.md` gate B6 — and only that run can close it.
+The operator reports **all nine** manual acceptance cases working. **No case is
+formally verified:** no chain, browser/Xverse version, redacted screenshot, scan
+figure, accepted input count or txid was supplied. Those reports are recorded as
+`PROVISIONAL PASS` in `docs/MANUAL_ACCEPTANCE.md` and **they move no release gate**.
+The artifacts that would change that are listed there under *Evidence still
+outstanding*. The M9 **txid and its network** is the item that matters most, because
+it is the only one a third party can check without trusting the reporter.
+
+Remaining work, none of it doable from this machine:
+
+1. The live-wallet evidence above (gates B5, B6, C9, H9, H10, J2, J3). Item 3 of the
+   list in `docs/MANUAL_ACCEPTANCE.md` is what closes H10/J2, and item 4 is what
+   closes the wallet's real PSBT payload limit, gate B6.
 2. An independent external security review (gate A11/E7);
    `docs/AUDIT_HANDOFF.md` is the brief for that reviewer, **not** the review.
 3. A security contact **outside GitHub** — an email address or PGP key (gate E11,
    pending owner input). GitHub private reporting is itself enabled and verified
    (gate E8).
 4. Windows and macOS install verification (gates K9/K10). Only Linux is verified.
+5. A decision on gate G7 (staging deployment), which is proposed for removal rather
+   than quietly converted to PASS — local-first distribution has no staging surface.
 
 `docs/RELEASE_NOTES_v0.1.0-rc.1.md` is prepared and **not published**: do not tag
 it or create a GitHub release while the items above are open, and do not deploy a

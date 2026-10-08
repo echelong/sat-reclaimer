@@ -5,6 +5,10 @@ text below is what would be published, and it is deliberately specific about wha
 has and has not been verified. Do not publish it while the open items at the
 bottom are open.
 
+**Source version `0.1.0-rc.1`** (`package.json`). The archival commit is named in
+the release body when the tag is made, not in this file, for the reason given under
+[Checksums](#checksums).
+
 This is a **source-only release candidate**. No binaries, installers, container
 images or native packages are produced, because producing them properly means
 building and testing them on each platform, and only Linux has been verified here.
@@ -110,10 +114,15 @@ Read these before connecting a wallet.
    implemented, and recovery never broadcasts on its own.
 2. **Xverse's real PSBT payload limit is unproven.** Local signing has been
    measured up to 10,000 inputs ([`docs/PERFORMANCE.md`](PERFORMANCE.md)), but the
-   largest count approved by a real wallet is 1,079. A very large sweep may need
+   largest count approved by a real wallet **with an artifact behind it** is 1,079.
+   The operator reports a large-payload run working, but no input count was
+   recorded, so the limit remains unproven and a very large sweep may still need
    several signature requests.
-3. **No live Signet end-to-end run.** No inscription-bearing Signet UTXO exists to
-   spend, so the non-Mainnet path has never completed against a real chain.
+3. **No *evidenced* live Signet/Testnet end-to-end run.** No inscription-bearing
+   Signet UTXO exists to spend here, so the non-Mainnet path has never been shown
+   completing against a real chain. The operator reports an end-to-end broadcast
+   (case M9) and reported that case on Signet/Testnet terms, but did not state the
+   chain or supply a txid, so this stands as written.
 4. **Xverse only.** There is no second signer to fall back to.
 5. **Broadcast endpoints are third parties** (`mempool.space`, `blockstream.info`,
    `mempool.emzy.de`). They see the transaction and a `txid` lookup; behaviour
@@ -122,6 +131,14 @@ Read these before connecting a wallet.
 6. **No security contact outside GitHub.** GitHub private vulnerability reporting
    is enabled and verified on the repository, but it requires a GitHub account, and
    there is no security email address or PGP key.
+7. **No acceptance result is formally verified.** The operator reports every manual
+   acceptance case working, but a report is not a checkable artifact. Gates B5, C9,
+   H9, H10, J2 and J3 therefore remain open, and this build carries exactly the same
+   caveats as the previous one on all of them.
+8. **Staging-deployment gate G7 is proposed for removal, not satisfied.** Local-first
+   distribution has no staging surface to protect. The proposal is recorded in
+   [`docs/RELEASE_GATES.md`](RELEASE_GATES.md#proposed-scope-change-g7-staging-deployment--awaiting-owner-approval)
+   and no status change has been applied.
 
 ## Test results
 
@@ -144,8 +161,25 @@ created by the tests.
 
 **What the tests do not cover:** anything requiring a real browser wallet. Connection,
 disconnect, network switching, live scanning, live signing and live broadcast are
-all unexercised here. [`docs/MANUAL_ACCEPTANCE.md`](MANUAL_ACCEPTANCE.md) is the
-operator procedure for those, and every case in it is currently `NOT RUN`.
+all unexercised by this repository. [`docs/MANUAL_ACCEPTANCE.md`](MANUAL_ACCEPTANCE.md)
+is the operator procedure for those.
+
+**On those cases, precisely:** the operator reports **all nine** working (M1–M9).
+Every one of them is recorded as `PROVISIONAL PASS`, because the artifacts that would
+let a second party check any of them — the chain used, browser and Xverse versions, a
+redacted screenshot, the scan figures, the accepted input count, the verification
+verdict, a txid — were not supplied. **No release gate moved as a result, and none
+should.** The seven artifacts that would change that are listed in
+`docs/MANUAL_ACCEPTANCE.md` under *Evidence still outstanding*.
+
+Two of those distinctions are worth stating where a user will see them, because they
+are easy to get wrong in a release note:
+
+- **The large-payload case passing does not prove Xverse's payload limit.** That gate
+  (B6) is the requirement that a *stated* number of inputs was accepted; no number
+  was recorded.
+- **A recovery test passing does not mean a signed transaction survives a refresh.**
+  It does not, by design — see Known limitations 1.
 
 ## The one confirmed real sweep
 
@@ -178,15 +212,66 @@ pnpm verify
 `--frozen-lockfile` installs exactly the versions in `pnpm-lock.yaml` and fails
 rather than resolving anything else.
 
+If a source archive is published beside the tag, its hash goes in the release body
+and is reproducible from the same commit:
+
+```bash
+git archive --format=tar.gz --prefix=sat-reclaimer-0.1.0-rc.1/ v0.1.0-rc.1 | sha256sum
+```
+
+That command is deterministic — verified by running it twice on the same commit and
+comparing digests — because `git archive` writes a zeroed mtime into the gzip
+header rather than the current time. The digest itself is deliberately **not**
+recorded in this file: writing it here would change the very commit it describes.
+Record it in the release, where it can be checked against an artifact instead of
+against itself.
+
 ## Do not publish yet
 
 This candidate is not published because these are open, and publishing a release
 implies more than the evidence supports:
 
-- **No independent external security review** — gate A11/E7.
-- **Xverse's real payload limit is unproven** — gate B6.
-- **No live-wallet acceptance run on this version** — gates B5, J2, J3.
+- **No independent external security review** — gates A11/E7.
+- **Xverse's real payload limit is unproven** — gate B6; no accepted input count was
+  recorded.
+- **No acceptance result is formally verified** — the operator reports all nine cases
+  working, and gates B5, C9, H9, H10, J2 and J3 stay **NOT VERIFIED** regardless.
+  The seven artifacts that would change that are listed in
+  [`docs/MANUAL_ACCEPTANCE.md`](MANUAL_ACCEPTANCE.md). The M9 **txid and network** is
+  the one that matters most: it is the only item on the list that a third party can
+  check without trusting the person who supplied it.
+- **C8 is open by design** — a signed transaction does not survive a refresh without
+  user action; the import panel is the shipped alternative, not a fix for it.
 - **No security contact outside GitHub** — gate E11, pending owner input. (GitHub private vulnerability reporting itself is enabled and verified — gate E8.)
-- **Windows and macOS unverified** — see [Supported platforms](#supported-platforms).
+- **Windows and macOS unverified** — gates K9/K10; see [Supported platforms](#supported-platforms).
+- **G7 (staging deployment) is propose-for-removal, not satisfied** — it needs an
+  owner decision, and no status change has been applied.
 
 The full gate list, with evidence, is [`docs/RELEASE_GATES.md`](RELEASE_GATES.md).
+
+## Tagging this release candidate (owner action — not yet taken)
+
+None of the commands below has been run. They are written down so the decision is
+one deliberate step, and they stay manual on purpose:
+
+```bash
+# 1. Confirm the commit, and that CI is green on it.
+git rev-parse HEAD
+gh run list --limit 1
+
+# 2. Tag locally first, and read the tag back before pushing anything.
+git tag -a v0.1.0-rc.1 -m "SAT//RECLAIMER v0.1.0-rc.1 (source-only release candidate)"
+git show --stat v0.1.0-rc.1
+
+# 3. Push the tag only on an explicit go-ahead.
+git push origin v0.1.0-rc.1
+
+# 4. Publish as a pre-release, never as "latest".
+gh release create v0.1.0-rc.1 --prerelease \
+  --title "v0.1.0-rc.1 — source-only release candidate" \
+  --notes-file docs/RELEASE_NOTES_v0.1.0-rc.1.md
+```
+
+Two deliberate choices in there: the release is marked `--prerelease` so it is never
+offered as the stable download, and the archive hash from [Checksums](#checksums) is
+added to the release body rather than committed here.
