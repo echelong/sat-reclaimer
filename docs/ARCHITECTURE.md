@@ -23,8 +23,11 @@ The web app is not a wallet custodian.
 5. The app builds a PSBT using those P2TR outputs as inputs.
 6. Xverse signs only the input indexes assigned to the Ordinals address, with
    `broadcast: false`.
-7. The returned PSBT is decoded and independently verified.
-8. Broadcast is a separate, gated action.
+7. The returned PSBT is decoded and independently verified, and only then
+   finalized into raw transaction bytes.
+8. Broadcast is a separate, explicitly authorized manual action: the raw bytes
+   are re-hashed locally and submitted to independent public nodes, never to the
+   wallet.
 
 No seed phrase or private key enters the application.
 
@@ -36,15 +39,34 @@ No seed phrase or private key enters the application.
 | `src/lib/types.ts` | Domain types, decoded transaction types, verification report types |
 | `src/lib/bitcoin.ts` | Networks, mainnet/broadcast gates, address validation, BIP86 Taproot derivation and the address/key proof, consensus limits, weight arithmetic |
 | `src/lib/sighash.ts` | Independent BIP341 key-path sighash (DEFAULT/ALL), with the midstate computed once per transaction |
-| `src/lib/ordinals.ts` | Outpoint parsing, untrusted-row validation, deduplication and quarantine, weight-aware batching, pagination rails, asset classification |
-| `src/lib/psbt.ts` | PSBT construction, exact accounting, sign-input index derivation, decoded re-check of its own output |
-| `src/lib/verify.ts` | Decoder independent of the builder, plus signed-PSBT verification and Schnorr checks |
-| `src/lib/xverse.ts` | Sats Connect client: typed requests, timeouts, error mapping, network reconciliation, gated broadcast |
-| `src/components/Reclaimer.tsx` | UI: connect, scan, acknowledge, select, build, sign, verify, broadcast |
+| `src/lib/ordinals.ts` | Outpoint parsing, untrusted-row validation, global deduplication and quarantine, full-wallet pagination with a completeness flag, weight-aware batching, asset classification |
+| `src/lib/psbt.ts` | PSBT construction, exact accounting, measured-size sweep planning with wallet-limit fallback, sign-input index derivation, decoded re-check of its own output |
+| `src/lib/verify.ts` | Decoder independent of the builder, plus signed-PSBT verification, Schnorr checks, and finalization only after verification passes |
+| `src/lib/broadcast.ts` | Manual broadcast: operator authorization, local txid re-derivation, network-scoped endpoints, node-rejection classification, txid lookup instead of resubmission, duplicate-submission guard |
+| `src/lib/xverse.ts` | Sats Connect client: typed requests, timeouts, error mapping, network reconciliation, signing only (`broadcast: false`) |
+| `src/components/Reclaimer.tsx` | Console UI: connect, scan, acknowledge, select, build, sign, verify, review, authorize, broadcast |
+| `app/layout.tsx` | Single root layout, shared metadata, and the only place global CSS is imported |
+| `app/(routes)` | `/` is the public landing page; `/app` mounts `Reclaimer`. `app/icon.svg`, `app/sitemap.ts` and `app/robots.ts` are metadata routes |
+| `src/components/landing/*` | Landing sections. `Nav`, `Hero`, `HowItWorks`, `Problem`, `Trust`, `Faq`, `Footer` are static; `HeroVisualization` and `Demo` are the only components that run a frame loop, and both own and release it |
+| `src/components/ui/*` | Shared motion primitives (`Reveal`, `Counter`, `useReducedMotion`). Nothing here imports domain code |
 
 Import direction is one-way: `errors → types → bitcoin → sighash → ordinals →
-psbt/verify → xverse → ui`. Only `xverse.ts` imports `sats-connect`, so the
-Bitcoin logic is testable without a browser.
+psbt/verify → broadcast → ui`, with `xverse` as a leaf for wallet access. Only
+`xverse.ts` imports `sats-connect`, so the Bitcoin and broadcast logic is
+testable without a browser.
+
+Presentation code is a separate branch off that chain. `src/components/ui/*` and
+the landing sections import nothing from `src/lib`, and `src/components/landing/Demo.tsx`
+holds only hard-coded constants — it has no wallet handle and no network client, so
+the simulated demo cannot sign or broadcast by construction rather than by
+discipline. All wallet, PSBT, signing, verification and broadcast imports stay in
+`src/components/Reclaimer.tsx` (plus `src/components/console/AppBar.tsx`, which
+imports only `next/link`).
+
+Styling is three plain-CSS layers imported once from `app/layout.tsx`:
+`globals.css` (tokens, reset, shared primitives, reduced-motion), `landing.css`
+(public page), `console.css` (`/app`). There is no CSS-in-JS, no utility
+framework, and no animation dependency.
 
 ## Design rules
 
@@ -57,9 +79,11 @@ Bitcoin logic is testable without a browser.
   transactions for 1–100 inputs and both supported sighash types.
 - **Fail closed.** Every unexpected condition throws a coded error and stops the
   flow rather than producing a transaction.
-- **Weight-aware batching.** Batches are bounded by input count *and* a 400,000 WU
-  budget: `weight = 4*(4+4+varint(in)+varint(out)) + 2 + 230*inputs + 4*(8+1+34)`
-  for a one-output P2TR sweep. 230 WU is the measured P2TR key-path input weight.
+- **Measured sizing.** The sweep planner builds the candidate transaction,
+  injects key-free placeholder signatures of exactly the size Xverse returns,
+  finalizes it, and reads the real relay weight from the serialized artifact. It
+  never sizes from a fixed per-input rule. `estimateSweepWeight` is retained only
+  as a cross-check that the analytic model agrees with the library.
 
 ## Published API surface (verified against installed packages)
 
@@ -82,8 +106,10 @@ destination address were all replaced.
 
 ### M1: signer compatibility proof
 
-Status: implementation complete, local proof complete, live wallet approval
-outstanding.
+Status: implementation complete, local proof complete. A live Signet approval is
+unavailable because there is no inscription-bearing Signet UTXO to spend, so the
+operator explicitly authorized a controlled, single-input Mainnet proof in its
+place (see M5). The local ladder and every verification check are unchanged.
 
 - Build, sign (locally) and verify 1/10/50/100/200/500-input batches with exact
   accounting; a 901-UTXO wallet splits into 5 batches.
@@ -94,14 +120,17 @@ outstanding.
   stability, per-input signature presence and Schnorr validity, sighash-type
   safety, and finalizability.
 
-Acceptance still requires a real Xverse wallet to sign real inscription inputs on
-Signet, with the signed bytes verified by this app.
+Acceptance runs on whichever chain the operator has enabled. The whole wallet is
+retrieved before anything is built, the sweep is sized from the measured
+serialized transaction, and the signed bytes are still verified by this app
+before anything else can happen. Signing never broadcasts.
 
 ### M2: transaction safety layer
 
-Status: largely delivered early. The decoder is independent of the builder, the
-preview is produced from the serialized PSBT, and the signed PSBT is decoded
-again against the same invariants.
+Status: implemented. The decoder is independent of the builder, the preview is
+produced from the serialized PSBT, and the signed PSBT is decoded again against
+the same invariants. Finalization happens only after every check passes, and the
+broadcast layer re-derives the txid from the raw bytes before any submission.
 
 ### M3: asset-awareness
 
@@ -117,10 +146,38 @@ Status: partial. Batching is weight- and count-bounded and deterministic. Not ye
 done: probing real wallet/provider payload limits, sequential signed-batch
 tracking, resume after cancellation, fee-rate refresh between batches.
 
-### M5: mainnet beta
+### M5: Mainnet sweep workflow
 
-Blocked. Requires a live Signet signing run, a confirmed Signet transaction,
-independent security review and a manual decision to unlock the flag.
+Disabled by default. `NEXT_PUBLIC_ENABLE_MAINNET=true` is an explicit operator
+decision that turns Mainnet on for the Sweep All workflow. It is a recorded
+policy decision, not a hidden bypass.
+
+While it is on:
+
+- the whole wallet is paged in until the indexer total is exhausted or the
+  provider returns an empty page; an incomplete scan blocks the sweep
+  (`assertScanComplete`);
+- the largest safe transaction is attempted first, sized from the exact measured
+  weight of the serialized transaction (never a fixed per-input rule), keeping a
+  safety margin below the 400,000 WU relay limit;
+- if Xverse rejects a large payload, the app re-plans the same wallet into the
+  minimum number of batches and they are signed sequentially;
+- the full pre-sign disclosure (UTXOs, inscriptions, total in, destination, exact
+  fee, fee % of recovered BTC, output, vsize, weight, batch count) is shown
+  before signing;
+- Xverse signs every listed input index with `broadcast: false`;
+- each returned PSBT is decoded and independently verified, including every
+  Schnorr signature, before anything else can happen;
+- only a verified transaction is finalized and serialized, and the final review
+  shows its input count, input sats, destination, output sats, mining fee, fee %,
+  vsize and txid;
+- broadcasting is never automatic: it needs a second operator opt-in
+  (`NEXT_PUBLIC_ENABLE_MAINNET_BROADCAST`), a per-transaction user authorization,
+  and it submits the exact verified bytes to independent public nodes only once;
+- a mismatched or ambiguous response is never followed by a resubmission;
+- after submission, an explicit **Check confirmation** action looks the txid up on
+  the same independent nodes (mempool or confirmed, with the block height when
+  reported) without ever submitting anything.
 
 ## Non-goals
 

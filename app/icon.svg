@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Sat Reclaimer">
+  <rect width="64" height="64" rx="14" fill="#080B12"/>
+  <rect x="6.5" y="6.5" width="51" height="51" rx="11" fill="none" stroke="#00F5FF" stroke-opacity="0.3" stroke-width="2"/>
+  <path d="M32 11 L53 32 L32 53 L11 32 Z" fill="#F7931A"/>
+  <path d="M32 22.5 L41.5 32 L32 41.5 L22.5 32 Z" fill="#080B12"/>
+</svg>

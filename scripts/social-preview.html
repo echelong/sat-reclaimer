@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sat Reclaimer social preview</title>
+    <!--
+      Source for public/og.png. It is a static card rather than a screenshot of the
+      landing page so the composition is exactly 1200x630 with no cropped headline
+      and no half-finished entry animation. Regenerate with:
+
+        chromium-browser --headless=new --no-sandbox --disable-gpu --hide-scrollbars \
+          --force-device-scale-factor=1 --window-size=1200,630 --virtual-time-budget=6000 \
+          --screenshot=public/og.png "file://$PWD/scripts/social-preview.html"
+
+      Headline metrics matter: at 58px Space Grotesk the lead line measures ~820px, and
+      the column is 1048px, so it stays on one line. Widening the type or narrowing
+      the column wraps it and breaks the strike-through placement.
+      Fonts come from Google Fonts (the same families next/font loads at build time);
+      this file is never served to users.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #080b12;
+        --line: #1d2740;
+        --line-strong: #2b3a5e;
+        --text: #e8eef7;
+        --text-dim: #98a8c4;
+        --cyan: #00f5ff;
+        --purple: #a855f7;
+        --magenta: #ff2e88;
+        --orange: #f7931a;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, sans-serif;
+        position: relative;
+      }
+
+      .glow {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(900px 520px at 4% -16%, rgba(0, 245, 255, 0.17), transparent 62%),
+          radial-gradient(760px 500px at 100% 0%, rgba(168, 85, 247, 0.2), transparent 60%),
+          radial-gradient(760px 500px at 72% 116%, rgba(255, 46, 136, 0.13), transparent 62%);
+      }
+
+      .grid {
+        position: absolute;
+        inset: 0;
+        opacity: 0.5;
+        background-image:
+          linear-gradient(to right, rgba(43, 58, 94, 0.42) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(43, 58, 94, 0.42) 1px, transparent 1px);
+        background-size: 64px 64px;
+        mask-image: radial-gradient(130% 100% at 34% 0%, #000, transparent 78%);
+        -webkit-mask-image: radial-gradient(130% 100% at 34% 0%, #000, transparent 78%);
+      }
+
+      .frame {
+        position: absolute;
+        left: 40px;
+        top: 40px;
+        right: 40px;
+        bottom: 40px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: linear-gradient(180deg, rgba(20, 26, 41, 0.62), rgba(8, 11, 18, 0.88));
+      }
+
+      .corner {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        border: solid var(--cyan);
+        opacity: 0.6;
+      }
+      .corner.tl { left: -1px; top: -1px; border-width: 1px 0 0 1px; border-top-left-radius: 22px; }
+      .corner.br { right: -1px; bottom: -1px; border-width: 0 1px 1px 0; border-bottom-right-radius: 22px; }
+
+      /* Faint consolidation motif, behind everything, right of centre. */
+      .motif {
+        position: absolute;
+        right: 0;
+        top: 90px;
+        width: 620px;
+        height: 470px;
+        opacity: 0.62;
+      }
+
+      .logo {
+        position: absolute;
+        left: 76px;
+        top: 62px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+      }
+
+      .logo-mark {
+        width: 30px;
+        height: 30px;
+        border: 1px solid var(--line-strong);
+        border-radius: 8px;
+        background: linear-gradient(140deg, rgba(0, 245, 255, 0.18), rgba(168, 85, 247, 0.14));
+        display: grid;
+        place-items: center;
+      }
+
+      .logo-mark i {
+        width: 10px;
+        height: 10px;
+        background: var(--orange);
+        border-radius: 2px;
+        transform: rotate(45deg);
+        box-shadow: 0 0 12px rgba(247, 147, 26, 0.85);
+      }
+
+      .logo b {
+        color: var(--cyan);
+        font-weight: 700;
+        padding: 0 1px;
+      }
+
+      .badge {
+        position: absolute;
+        right: 76px;
+        top: 68px;
+        padding: 7px 14px;
+        border: 1px solid rgba(0, 245, 255, 0.42);
+        border-radius: 100px;
+        background: rgba(0, 245, 255, 0.08);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--cyan);
+      }
+
+      h1 {
+        position: absolute;
+        left: 76px;
+        top: 148px;
+        width: 1048px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 58px;
+        font-weight: 700;
+        line-height: 1.05;
+        letter-spacing: -0.035em;
+      }
+
+      h1 .dead {
+        display: block;
+        width: fit-content;
+        position: relative;
+        color: #64738e;
+      }
+
+      h1 .dead::after {
+        content: '';
+        position: absolute;
+        left: -6px;
+        right: -6px;
+        top: 50%;
+        height: 5px;
+        margin-top: -2px;
+        border-radius: 3px;
+        background: linear-gradient(to right, #ff2e88, rgba(255, 46, 136, 0.62));
+        box-shadow: 0 0 24px -2px rgba(255, 46, 136, 0.9);
+      }
+
+      h1 .live {
+        display: block;
+        width: fit-content;
+        position: relative;
+        margin-top: 6px;
+        color: #fff;
+        text-shadow: 0 0 52px rgba(0, 245, 255, 0.42);
+      }
+
+      h1 .live::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -9px;
+        height: 2px;
+        background: linear-gradient(to right, var(--cyan), rgba(0, 245, 255, 0.04));
+      }
+
+      .lede {
+        position: absolute;
+        left: 76px;
+        top: 340px;
+        width: 660px;
+        font-size: 20px;
+        line-height: 1.55;
+        color: var(--text-dim);
+      }
+
+      .chips {
+        position: absolute;
+        left: 76px;
+        bottom: 74px;
+        display: flex;
+        gap: 10px;
+      }
+
+      .chip {
+        padding: 8px 15px;
+        border: 1px solid var(--line-strong);
+        border-radius: 100px;
+        background: rgba(16, 21, 34, 0.82);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+      }
+
+      .chip.hot {
+        border-color: rgba(0, 245, 255, 0.45);
+        background: rgba(0, 245, 255, 0.08);
+        color: var(--cyan);
+      }
+
+      .chip.btc {
+        border-color: rgba(247, 147, 26, 0.45);
+        background: rgba(247, 147, 26, 0.08);
+        color: var(--orange);
+      }
+
+      .stat {
+        position: absolute;
+        right: 76px;
+        bottom: 78px;
+        text-align: right;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #64738e;
+      }
+
+      .stat b {
+        color: var(--text);
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="glow"></div>
+    <div class="grid"></div>
+
+    <div class="frame">
+      <span class="corner tl"></span>
+      <span class="corner br"></span>
+    </div>
+
+    <div class="motif">
+      <svg viewBox="0 0 620 470" fill="none">
+        <g stroke="#00f5ff" stroke-opacity=".13" stroke-width="1">
+          <path d="M60 70 L210 128 M96 200 L210 128 M120 330 L210 128 M250 60 L210 128 M290 300 L210 128" />
+          <path d="M60 70 L96 200 M120 330 L250 400 M300 90 L380 300" />
+        </g>
+        <g fill="#00f5ff" fill-opacity=".5">
+          <circle cx="60" cy="70" r="4" />
+          <circle cx="96" cy="200" r="5" />
+          <circle cx="120" cy="330" r="4" />
+          <circle cx="250" cy="60" r="4" />
+          <circle cx="290" cy="300" r="5" />
+          <circle cx="250" cy="400" r="4" />
+          <circle cx="380" cy="300" r="5" />
+          <circle cx="300" cy="90" r="4" />
+          <circle cx="210" cy="128" r="6" />
+        </g>
+        <g stroke="#00f5ff" stroke-opacity=".16" stroke-width="1">
+          <path d="M290 300 L470 235 M380 300 L470 235 M250 400 L470 235 M210 128 L470 235" />
+        </g>
+        <circle cx="470" cy="235" r="150" fill="url(#halo)" />
+        <circle cx="470" cy="235" r="124" stroke="#00f5ff" stroke-opacity=".2" stroke-width="1.2" stroke-dasharray="7 10" />
+        <circle cx="470" cy="235" r="94" stroke="#a855f7" stroke-opacity=".3" stroke-width="1.2" stroke-dasharray="26 34" />
+        <circle cx="470" cy="235" r="54" fill="#f7931a" />
+        <g stroke="#ffe8d2" stroke-width="4" stroke-linecap="round" opacity=".9">
+          <path d="M470 210 L470 260" />
+          <path d="M456 218 L484 218" />
+          <path d="M456 252 L484 252" />
+        </g>
+        <defs>
+          <radialGradient id="halo" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#f7931a" stop-opacity=".38" />
+            <stop offset="0.45" stop-color="#ff2e88" stop-opacity=".12" />
+            <stop offset="1" stop-color="#f7931a" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+      </svg>
+    </div>
+
+    <div class="logo">
+      <span class="logo-mark"><i></i></span>
+      SAT<b>//</b>RECLAIMER
+    </div>
+
+    <div class="badge">Public Beta</div>
+
+    <h1>
+      <span class="dead">Your inscriptions are worthless.</span>
+      <span class="live">Your sats aren&rsquo;t.</span>
+    </h1>
+
+    <p class="lede">
+      Reclaim the Bitcoin locked inside unwanted Ordinals. Connect your wallet, scan your
+      inscriptions, and sweep their sats as BTC.
+    </p>
+
+    <div class="chips">
+      <span class="chip hot">Non-custodial</span>
+      <span class="chip">No seed phrase</span>
+      <span class="chip btc">Verified locally</span>
+    </div>
+
+    <div class="stat">
+      <b>1,079</b> UTXOs &nbsp;→&nbsp; <b>1</b> transaction
+    </div>
+  </body>
+</html>

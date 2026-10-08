@@ -7,3 +7,6 @@ coverage
 *.log
 *.tsbuildinfo
 .DS_Store
+
+# Local browser QA captures (see docs/DESIGN_SYSTEM.md). Regenerable.
+qa-screenshots
