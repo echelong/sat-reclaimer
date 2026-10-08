@@ -37,6 +37,7 @@ import {
   scanOrdinals,
   signPsbt,
 } from '@/src/lib/xverse';
+import { ImportTransaction } from '@/src/components/console/ImportTransaction';
 import type {
   AppNetwork,
   BuiltBatch,
@@ -46,6 +47,13 @@ import type {
 } from '@/src/lib/types';
 
 const MAINNET_ENABLED = isMainnetEnabled(process.env.NEXT_PUBLIC_ENABLE_MAINNET);
+
+/**
+ * From this share of the recovered value upward, the miner fee stops being a
+ * detail and becomes the headline. The fee is always shown before signing; this
+ * threshold decides when it is shown as a warning rather than a number.
+ */
+const HIGH_FEE_WARNING_PERCENT = 25;
 
 /**
  * Broadcasting is a separate operator authorization, never a side effect of
@@ -258,8 +266,14 @@ export function Reclaimer() {
         // transaction is refused for a size/input reason, re-plan the same
         // wallet into the minimum number of smaller batches. No validation is
         // relaxed to make this pass.
-        if (isWalletSizeLimitError(error) && sweep.singleTransaction && batch.utxos.length > 1) {
-          const smaller = Math.max(1, Math.floor(batch.utxos.length / 2));
+        // Halve the largest batch and try again. This repeats as long as the
+        // wallet keeps refusing a payload that is still bigger than one input,
+        // so a wallet with a much lower practical limit than the relay policy
+        // still reaches a single Sweep All workflow. Every re-plan rebuilds and
+        // re-measures the transactions from scratch; no validation is relaxed.
+        const largestBatch = sweep.batches.reduce((max, entry) => Math.max(max, entry.utxos.length), 0);
+        if (isWalletSizeLimitError(error) && largestBatch > 1) {
+          const smaller = Math.max(1, Math.floor(largestBatch / 2));
           const replanned = planSweep({
             utxos: sweep.batches.flatMap((entry) => entry.utxos),
             ordinals: { publicKeyHex: wallet.ordinals.publicKey, address: wallet.ordinals.address },
@@ -275,7 +289,7 @@ export function Reclaimer() {
           setConfirmedTxids({});
           setTxidStatuses({});
           setStatus(
-            `Xverse rejected the single ${num(batch.utxos.length)}-input transaction as too large. Re-planned into ${num(replanned.batchCount)} batches of up to ${num(smaller)} inputs. Sign batch 1 of ${num(replanned.batchCount)}.`,
+            `Xverse rejected the ${num(batch.utxos.length)}-input transaction as too large. Re-planned the same ${num(replanned.inputCount)} UTXOs into ${num(replanned.batchCount)} transactions of up to ${num(smaller)} inputs each (fee ${sats(replanned.feeSats)} total). Nothing was signed. Sign batch 1 of ${num(replanned.batchCount)}.`,
           );
           return;
         }
@@ -526,7 +540,23 @@ export function Reclaimer() {
                     <dt>Duplicates skipped</dt>
                     <dd className="num">{num(scan.duplicateIdCount)}</dd>
                   </div>
+                  <div>
+                    <dt>Rows with no address</dt>
+                    <dd className="num" data-tone={scan.unverifiedAddressCount > 0 ? 'warn' : undefined}>
+                      {num(scan.unverifiedAddressCount)}
+                    </dd>
+                  </div>
                 </dl>
+
+                {scan.unverifiedAddressCount > 0 && (
+                  <p className="cx-note">
+                    {num(scan.unverifiedAddressCount)} row(s) came back without an address, so this app
+                    could not confirm from the wallet&apos;s response that they belong to your Ordinals
+                    address. They are still listed and spendable: every input script is re-checked
+                    against your key before signing and each signature is verified afterwards, so a
+                    row that is not yours cannot produce a valid transaction.
+                  </p>
+                )}
 
                 <p className={scan.complete ? 'cx-note' : 'cx-note'} data-tone={scan.complete ? undefined : 'danger'}>
                   {scan.complete
@@ -734,6 +764,20 @@ export function Reclaimer() {
                 ? `${num(sweep.inputCount)} UTXOs → 1 Bitcoin transaction → 1 destination`
                 : `${num(sweep.inputCount)} UTXOs → ${num(sweep.batchCount)} transactions → 1 destination`}
             </p>
+
+            {sweep.feePercent >= HIGH_FEE_WARNING_PERCENT && (
+              <p className="cx-banner" data-tone="danger" data-strong="true" role="alert">
+                <span className="cx-banner-tag mono">High fee</span>
+                <span>
+                  The Bitcoin network fee is <strong>{sweep.feePercent.toFixed(2)}%</strong> of the value
+                  you are recovering: {sats(sweep.feeSats)} of {sats(sweep.inputSats)} goes to miners and{' '}
+                  {sats(sweep.outputSats)} reaches your destination. That is the real cost of moving{' '}
+                  {num(sweep.inputCount)} inputs at {sweep.feeRateSatVb.toString()} sat/vB — Sat Reclaimer
+                  takes none of it. If that is not worth it, lower the fee rate or wait for cheaper
+                  blocks, and nothing will be signed.
+                </span>
+              </p>
+            )}
 
             <dl className="cx-dl cx-dl-grid">
               <div>
@@ -1028,6 +1072,12 @@ export function Reclaimer() {
             </div>
           </section>
         )}
+
+        <ImportTransaction
+          network={wallet?.requestedNetwork ?? network}
+          broadcastState={broadcastState}
+          authorisation={BROADCAST_AUTHORISATION}
+        />
 
         <div className="cx-log" aria-live="polite" aria-atomic="true">
           {status && (
