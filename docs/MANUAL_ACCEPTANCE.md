@@ -4,10 +4,11 @@ Operator-assisted tests for the parts of SAT//RECLAIMER that only a real browser
 wallet can exercise: Xverse connection, inscription scanning against the live
 provider, signing, and on-chain confirmation.
 
-**None of these cases has been run.** Every result cell below reads `NOT RUN`.
-This document is a procedure, not a record. Do not read the presence of a case as
-evidence that it passed, and do not close a release gate until its result cell
-holds a real observation.
+**Only M1, M2 and M3 have been touched, and only provisionally.** Their result
+cells read `PROVISIONAL PASS` because the operator reported the behaviour; the other
+six cells read `NOT RUN`. This document is a procedure, not a record. Do not read
+the presence of a case as evidence that it passed, and do not close a release gate
+until its result cell holds a real, checkable observation.
 
 The gates these cases close are listed in [`RELEASE_GATES.md`](RELEASE_GATES.md):
 **B5**, **B6**, **C8**, **C9**, **H9**, **H10**, **J2**, **J3**. All of them are
@@ -75,6 +76,12 @@ An entry is only evidence if someone else could check it. For every case record:
 
 - **The result**, `PASS` or `FAIL`. Use `BLOCKED` when the case could not be
   started, and say why (no provider, no funded wallet, no Signet UTXO).
+- **`PROVISIONAL PASS`** is a separate, weaker status for the one situation where
+  the operator reports success but the evidence that would let someone else check
+  it — the chain, the browser and wallet versions, a redacted screenshot, the exact
+  console text — is still outstanding. A provisional result is recorded so it is not
+  lost, and it **moves no gate**: the gate stays `NOT VERIFIED` until the evidence
+  arrives and the row is promoted to `PASS`.
 - **The exact console error code**, if one appeared. Refusals are prefixed with a
   machine-readable code in brackets, for example `[WALLET_NOT_INSTALLED]` or
   `[SCAN_INCOMPLETE]`. The code is the most useful thing in the record; the prose
@@ -144,7 +151,7 @@ address type. Record that as a PASS for the refusal, not a FAIL.
 
 | Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
 | --- | --- |
-| NOT RUN | NOT RUN |
+| **PROVISIONAL PASS** — operator-reported, not yet formally verified | Operator connected Xverse at commit `c9ef05b` on 2026-10-08 in `plan` mode and reported the connection state correct. **Outstanding before this can be a formal PASS:** the chain used, the browser and Xverse versions, a redacted screenshot of step 01, and the exact status-line text. Gates **B5** and **J2** stay **NOT VERIFIED** until those are recorded — a report is not a checkable artifact on its own |
 
 ---
 
@@ -159,10 +166,15 @@ address type. Record that as a PASS for the refusal, not a FAIL.
 
 1. Press **Disconnect**.
 2. Observe the console state.
-3. Press **Reconnect Xverse** and approve in Xverse.
-4. Reconnect, then press **Scan all inscriptions**, then **Disconnect while a scan
-   result is on screen**.
-5. Reconnect again and start a fresh scan.
+3. Press the connect button and approve in Xverse. Note the label: it reads
+   `Reconnect Xverse` only while a wallet is still connected, and `Connect Xverse`
+   once you have disconnected (`Reclaimer.tsx` chooses the label from the wallet
+   state). After step 1 it therefore reads `Connect Xverse` — record whichever you
+   actually saw.
+4. Now press **Scan all inscriptions**, then **Disconnect while a scan result is on
+   screen**. A wallet with no inscription UTXOs still produces a scan *result* (zero
+   inscriptions) and still exercises this path; record the scan's numbers.
+5. Connect again and start a fresh scan.
 
 **Expected result**
 
@@ -176,12 +188,19 @@ address type. Record that as a PASS for the refusal, not a FAIL.
   transaction built from the previous session can still be signed. A signature
   request is bound to the address the wallet returns, so a leftover sweep cannot
   be signed by a different wallet — but record what the screen actually showed.
-- After reconnect, the destructive acknowledgement is unchecked again, and the
-  signing phrase field is empty.
+  `onDisconnect` clears `wallet`, the input script, the scan, the selection, the
+  sweep and the Mainnet acknowledgement; it does not clear the signing phrase, but
+  the phrase field is not rendered once the sweep is gone.
+- After **reconnecting** (not merely disconnecting), `onConnect` clears the
+  destructive acknowledgement, the Mainnet acknowledgement and the signing phrase,
+  so the phrase field is empty again and the acknowledgement is unchecked. The
+  phrase field only appears once a sweep exists, so to see it at all you need to
+  build a sweep first (M5/M7 territory) — otherwise record that the field was not
+  rendered rather than recording it as empty.
 
 | Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
 | --- | --- |
-| NOT RUN | NOT RUN |
+| **PROVISIONAL PASS** — operator-reported, not yet formally verified | Operator pressed **Disconnect**, observed the console, and reconnected Xverse at commit `c9ef05b` on 2026-10-08 in `plan` mode, reporting the disconnect/reconnect behaviour correct. **Outstanding before this can be a formal PASS:** the chain used, the browser and Xverse versions, a redacted screenshot of the disconnected and the reconnected states, the exact status-line text, and the scan numbers from step 4 if that step was run. Gate **H9** stays **NOT VERIFIED** until those are recorded — C5's **PASS** rests on the component behaviour and `tests/wallet.test.ts`, not on this run |
 
 ---
 
@@ -216,7 +235,7 @@ address type. Record that as a PASS for the refusal, not a FAIL.
 
 | Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
 | --- | --- |
-| NOT RUN | NOT RUN |
+| **PROVISIONAL PASS** — operator-reported, not yet formally verified | Operator switched the console and Xverse between networks at commit `c9ef05b` on 2026-10-08 in `plan` mode and reported the network handling correct. **Outstanding before this can be a formal PASS:** which two networks were used, the browser and Xverse versions, a redacted screenshot of the mismatch refusal, and the exact refusal text (the `[WALLET_NETWORK_MISMATCH]` message). Gates **H9** and **B5** stay **NOT VERIFIED** until those are recorded |
 
 ---
 
@@ -508,9 +527,9 @@ unverified, and the gate it belongs to stays **NOT VERIFIED**.
 
 | Case | Gates | Result | Recorded by / date |
 | --- | --- | --- | --- |
-| M1 Wallet connection | B5, J2 | NOT RUN | NOT RUN |
-| M2 Disconnect / reconnect | H9, C5 | NOT RUN | NOT RUN |
-| M3 Network switching | H9, B5 | NOT RUN | NOT RUN |
+| M1 Wallet connection | B5, J2 | **PROVISIONAL PASS** (operator-reported, 2026-10-08, `c9ef05b`, plan mode) — pending chain, versions, screenshot, status line | Operator report only; not yet checkable |
+| M2 Disconnect / reconnect | H9, C5 | **PROVISIONAL PASS** (operator-reported, 2026-10-08, `c9ef05b`, plan mode) — pending chain, versions, screenshot, exact status line | Operator report only; not yet checkable |
+| M3 Network switching | H9, B5 | **PROVISIONAL PASS** (operator-reported, 2026-10-08, `c9ef05b`, plan mode) — pending networks used, versions, screenshot, exact refusal text | Operator report only; not yet checkable |
 | M4 Full inscription scanning | H10, J2 | NOT RUN | NOT RUN |
 | M5 Large PSBT payload handling | B6 | NOT RUN | NOT RUN |
 | M6 User cancellation | B5 | NOT RUN | NOT RUN |

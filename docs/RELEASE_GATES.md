@@ -43,7 +43,7 @@ and the final release report.
 | B2 | Ordinals address proven to be the BIP86 output of the reported public key | **PASS** | `src/lib/bitcoin.ts`; `tests/bitcoin.test.ts` |
 | B3 | Reported wallet network reconciled against the requested network | **PASS** | `src/lib/xverse.ts` (mismatch stops the flow) |
 | B4 | Only Xverse / Sats Connect is claimed as supported | **PASS** | Stated in README, `/privacy`, `/open-source`, `docs/RISK.md` |
-| B5 | A live wallet approval exercised end-to-end | **NOT VERIFIED** | This environment cannot drive the browser extension. The only real-wallet data point is the confirmed Mainnet transaction (A10), whose wallet-side approval was observed by the operator, not re-observed here |
+| B5 | A live wallet approval exercised end-to-end | **NOT VERIFIED** | This environment cannot drive the browser extension. The only real-wallet data point is the confirmed Mainnet transaction (A10), whose wallet-side approval was observed by the operator, not re-observed here. In M6 the operator reported M1 (connect) and M3 (network switching, including the Mainnet-locked refusal) working, but those are recorded as **PROVISIONAL PASS** in `docs/MANUAL_ACCEPTANCE.md` — no chain, browser/Xverse versions, screenshot or exact status text was supplied, so the gate stays open |
 | B6 | The provider's real PSBT payload limit is proven | **NOT VERIFIED** | Synthetic signing does not exercise the provider request-size limit. Largest real-wallet-approved count recorded separately in `docs/PERFORMANCE.md`. **Release blocker for the largest wallets.** |
 
 ## C — Transaction reliability
@@ -131,7 +131,7 @@ Chromium over the Chrome DevTools Protocol.
 | H6 | No browser memory leak across the flows | **PASS** | 10 alternating `/` ↔ `/app` cycles with a forced GC between samples: JS heap 3 → 12 MB and then flat (11/12/11/12 MB over the last four), i.e. bundle load then steady state, not monotonic growth |
 | H7 | Wallet-unavailable messaging and error states | **PASS** | Connect pressed with no provider installed: `REFUSED No Xverse provider was found. Install the Xverse extension, or open this page inside the Xverse in-app browser. [WALLET_NOT_INSTALLED]` — fail-closed, actionable, not a silent no-op |
 | H8 | Landing-page demo arithmetic matches the confirmed sweep | **PASS** | Demo button exercised in the browser: 8 result lines, 601,214 sats in / 62,087 sats fee / 539,127 sats net — the confirmed on-chain figures |
-| H9 | Xverse disconnect/reconnect and wallet network switches | **NOT VERIFIED** | Requires the extension in a real browser profile. The code paths are covered by `tests/wallet.test.ts` |
+| H9 | Xverse disconnect/reconnect and wallet network switches | **NOT VERIFIED** | Requires the extension in a real browser profile. The code paths are covered by `tests/wallet.test.ts`. Cases M2 (disconnect/reconnect) and M3 (network switching) were exercised by the operator in M6 and reported working, but both are recorded as **PROVISIONAL PASS** in `docs/MANUAL_ACCEPTANCE.md`; a provisional result moves no gate, so this stays **NOT VERIFIED** until a checkable observation (versions, screenshot, exact messages) is recorded |
 | H10 | Scan pagination and large-wallet performance against a live wallet | **NOT VERIFIED** | Requires a funded ordinal wallet; the planner is measured in `docs/PERFORMANCE.md` |
 
 ### Defect found and fixed during this pass
@@ -206,6 +206,13 @@ but **unpublished** release candidate.
   repository.
 - **NOT VERIFIED (no evidence available here):** A11, B5, B6, C8, C9, E7, E11,
   G7, H9, H10, J2, J3, K9, K10.
+- **Re-checked in M6 (2026-10-08): no gate status changed.** The operator reported
+  cases M1 (connect), M2 (disconnect/reconnect) and M3 (network switching) working
+  in a real browser. Each is recorded as a **PROVISIONAL PASS** in
+  `docs/MANUAL_ACCEPTANCE.md` with the chain, versions, screenshot and exact
+  messages still outstanding, and a provisional result moves no gate — so **B5**,
+  **H9** and **J2** all stay **NOT VERIFIED**. **C5** already stood **PASS** on the
+  component behaviour and `tests/wallet.test.ts`, not on this run.
 
 ### Unrestricted public Mainnet launch is blocked by
 
