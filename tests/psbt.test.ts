@@ -40,14 +40,12 @@ function buildFor(utxos: ReturnType<typeof makeUtxo>[], options: {
 }
 
 /**
- * Yield a macrotask so vitest's worker RPC can drain between the CPU-heavy
- * sweep tests. Building, signing, finalizing and measuring 1,000-input
- * transactions blocks the worker's event loop for tens of seconds; without an
- * explicit yield the `onTaskUpdate` response can queue longer than birpc's 60 s
- * timeout, and vitest reports a spurious
- * `[vitest-worker]: Timeout calling "onTaskUpdate"` even though every assertion
- * passes. This does not change what is computed or asserted — it only lets the
- * worker answer its supervisor while the suite runs.
+ * Yield a macrotask between the CPU-heavy sweep tests. Building, signing,
+ * finalizing and measuring 1,000-input transactions blocks the event loop for
+ * tens of seconds at a time; yielding lets the worker answer its supervisor and
+ * lets the runtime reclaim the previous transaction before the next one is built.
+ * This does not change what is computed or asserted — it only keeps the long
+ * synchronous runs from monopolising the process.
  */
 async function yieldToEventLoop(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));

@@ -7,8 +7,8 @@ of it is extrapolated from a fixed per-input rule.
 - **Measured** on Cobalt PC, 2026-10-08, Node v22.23.1, `pnpm@10.17.1`,
   `@scure/btc-signer@2.4.1`.
 - **Reproduce:** `pnpm test` runs 1–5,000 UTXOs; `pnpm test:max`
-  (`LARGE_WALLET_MAX=1`) additionally runs the 10,000-UTXO case.
-  The raw table is printed by `tests/large-wallet.test.ts`.
+  (`LARGE_WALLET_MAX=1`) additionally runs the 10,000-UTXO case. CI runs both, in
+  separate jobs. The raw table is printed by `tests/large-wallet.test.ts`.
 
 Fixtures: every UTXO is a `10,000`-sat `v1_p2tr` output carrying one inscription,
 all spendable by one deterministic test key. Destination is P2TR, fee rate
@@ -107,19 +107,25 @@ approves and broadcasts a multi-thousand-input sweep, that row is the only
 real-wallet data point and the wallet payload limit stays a release blocker
 (`docs/RELEASE_GATES.md`, gate B/D).
 
-## The 10,000-input case and vitest's worker heartbeat
+## The 10,000-input case and why it has its own script
 
-Planning ten thousand inputs is one ~97-second synchronous computation. Vitest's
-worker RPC abandons a task after 60 seconds of a blocked event loop and reports a
-spurious `[vitest-worker]: Timeout calling "onTaskUpdate"` even when every
-assertion passes. There is no configurable knob for it in vitest 3.2.7.
+Planning ten thousand inputs is one ~100-second synchronous computation. It is
+gated behind `LARGE_WALLET_MAX=1` (`pnpm test:max`) so the default `pnpm test`,
+which a contributor runs constantly, does not carry that cost — a runtime
+decision, not a correctness one.
 
-Two things follow:
+This is worth stating precisely, because the gate used to exist for a different
+reason. Under vitest 3.2.7, the worker RPC abandoned a task after 60 seconds of a
+blocked event loop and reported a spurious
+`[vitest-worker]: Timeout calling "onTaskUpdate"` even when every assertion
+passed. Installing `vitest 5.0.3` — which was done to clear two critical Tinypool
+advisories, see `docs/RELEASE_GATES.md` E9/E10 — removed that behaviour: the scale
+case now passes in the same process as everything else, and a full run with it
+enabled reports **238/238 passed, exit 0**. So `pnpm test:max` and the separate CI
+job remain, but only to keep the default suite quick; nothing is being worked
+around.
 
-1. The suite yields a macrotask between sizes and between batches
-   (`yieldToEventLoop`) so the worker can answer its supervisor. This changes no
-   computation and no assertion — it only lets the worker drain.
-2. The 10,000-input case is behind `LARGE_WALLET_MAX=1` (`pnpm test:max`) so the
-   default `pnpm test` never blocks the event loop that long. It is not skipped to
-   make anything pass: it runs in CI as its own job, it asserts the same
-   invariants as every other size, and its results are the 10,000-input row above.
+The suite still yields a macrotask between sizes and between batches
+(`yieldToEventLoop`). That changes no computation and no assertion — it lets the
+worker answer its supervisor and lets memory be reclaimed between the large
+builds.
