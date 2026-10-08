@@ -72,7 +72,7 @@ export type ReclaimUtxo = {
 };
 
 export type ScanResult = {
-  /** Every inscription row the wallet reported (deduplicated UTXOs aside). */
+  /** Unique inscriptions retrieved (deduplicated across pages). */
   inscriptionCount: number;
   /** Unique UTXOs keyed by `txid:vout`. */
   utxos: ReclaimUtxo[];
@@ -80,7 +80,15 @@ export type ScanResult = {
   /** Sats held by the reclaimable UTXO set, counted once per outpoint. */
   grossSats: bigint;
   pagesFetched: number;
+  /** Indexer-reported inscription total, used to prove the scan finished. */
   reportedTotal: number | null;
+  /** Unique inscriptions actually retrieved. */
+  retrievedCount: number;
+  /** Rows the provider returned more than once and that were skipped. */
+  duplicateIdCount: number;
+  /** True only when the whole wallet was retrieved. Sweep All refuses otherwise. */
+  complete: boolean;
+  warnings: string[];
   truncated: boolean;
 };
 

@@ -428,38 +428,59 @@ export type PaginationResult = {
   rows: unknown[];
   pagesFetched: number;
   reportedTotal: number | null;
+  /** Unique inscriptions retrieved after de-duplicating ids across pages. */
+  retrievedCount: number;
+  /** Rows the provider returned more than once, skipped during retrieval. */
+  duplicateIdCount: number;
   truncated: boolean;
+  /** Every reported inscription was retrieved, or the source ran out of pages. */
+  complete: boolean;
   warnings: string[];
 };
 
 const MAX_PAGE_LIMIT = 200;
 
 /**
- * Page through `ord_getInscriptions` with hard rails so a broken or hostile
- * provider cannot loop forever, and so a huge wallet is reported honestly
- * instead of silently truncated.
+ * Page through `ord_getInscriptions` until the whole wallet is retrieved.
+ *
+ * Providers routinely return a smaller page than the requested `limit` (Xverse
+ * caps responses well below it), so a short page is NOT a signal that the data
+ * has ended. The scan continues until the reported total is reached or the
+ * provider returns an empty page, and it keeps hard rails so a broken or hostile
+ * provider cannot loop forever. Returns an explicit `complete` flag; callers must
+ * refuse a sweep built on an incomplete scan.
  */
 export async function fetchAllInscriptions(
   fetchPage: FetchInscriptionsPage,
   options: PaginationOptions = {},
 ): Promise<PaginationResult> {
   const limit = Math.min(Math.max(options.limit ?? 100, 1), MAX_PAGE_LIMIT);
-  const maxPages = options.maxPages ?? 200;
-  const maxRows = options.maxRows ?? 20_000;
+  const maxPages = options.maxPages ?? 1_000;
+  const maxRows = options.maxRows ?? 100_000;
 
   const rows: unknown[] = [];
   const warnings: string[] = [];
+  const seenIds = new Set<string>();
+  const pageSignatures = new Set<string>();
   let pages = 0;
   let reportedTotal: number | null = null;
+  let duplicateIdCount = 0;
   let truncated = false;
-  let previousFirstId: string | null = null;
+  let exhausted = false;
   let offset = 0;
 
   while (true) {
-    if (pages >= maxPages || rows.length >= maxRows) {
+    if (pages >= maxPages) {
       truncated = true;
       warnings.push(
-        `Stopped after ${pages} pages / ${rows.length} inscriptions because the scan hit its safety limit. Results are incomplete.`,
+        `Stopped after ${pages} pages because the scan hit its page safety limit. Results are incomplete.`,
+      );
+      break;
+    }
+    if (rows.length >= maxRows) {
+      truncated = true;
+      warnings.push(
+        `Stopped after ${rows.length} inscriptions because the scan hit its row safety limit. Results are incomplete.`,
       );
       break;
     }
@@ -483,26 +504,81 @@ export async function fetchAllInscriptions(
     const pageTotal = Number(page.total);
     if (Number.isFinite(pageTotal) && pageTotal >= 0) reportedTotal = pageTotal;
 
-    if (pageRows.length === 0) break;
+    // An empty page is the provider's explicit "no further pages" signal.
+    if (pageRows.length === 0) {
+      exhausted = true;
+      break;
+    }
 
-    const firstId = readInscriptionId(pageRows[0]);
-    if (firstId !== null && firstId === previousFirstId) {
+    // Loop detection: a provider that ignores the offset and repeats a whole
+    // page tells us nothing new, so the scan stops instead of spinning forever.
+    const signature = `${readInscriptionId(pageRows[0]) ?? '?'}|${
+      readInscriptionId(pageRows[pageRows.length - 1]) ?? '?'
+    }|${pageRows.length}`;
+    if (pageSignatures.has(signature)) {
+      truncated = true;
       warnings.push(
         'The wallet repeated a page instead of advancing the offset; the scan stopped early. Results are incomplete.',
       );
-      truncated = true;
       break;
     }
-    previousFirstId = firstId;
+    pageSignatures.add(signature);
 
-    rows.push(...pageRows);
+    for (const row of pageRows) {
+      const id = readInscriptionId(row);
+      if (id !== null) {
+        if (seenIds.has(id)) {
+          duplicateIdCount += 1;
+          continue;
+        }
+        seenIds.add(id);
+      }
+      rows.push(row);
+    }
+
     offset += pageRows.length;
 
-    if (reportedTotal !== null && offset >= reportedTotal) break;
-    if (pageRows.length < limit) break;
+    if (reportedTotal !== null && rows.length >= reportedTotal) break;
   }
 
-  return { rows, pagesFetched: pages, reportedTotal, truncated, warnings };
+  const retrievedCount = rows.length;
+  const complete = !truncated && (reportedTotal === null ? exhausted : retrievedCount >= reportedTotal);
+
+  if (duplicateIdCount > 0) {
+    warnings.push(
+      `Skipped ${duplicateIdCount} duplicate inscription row(s) the wallet returned more than once.`,
+    );
+  }
+
+  return {
+    rows,
+    pagesFetched: pages,
+    reportedTotal,
+    retrievedCount,
+    duplicateIdCount,
+    truncated,
+    complete,
+    warnings,
+  };
+}
+
+/**
+ * Refuse to sweep a wallet whose scan did not finish. Building on a partial
+ * UTXO set would silently leave inscriptions behind.
+ */
+export function assertScanComplete(scan: {
+  complete: boolean;
+  reportedTotal: number | null;
+  retrievedCount: number;
+}): void {
+  if (!scan.complete) {
+    throw new ReclaimerError(
+      'SCAN_INCOMPLETE',
+      scan.reportedTotal === null
+        ? 'Refusing to sweep: the inscription scan never reached the end of the wallet.'
+        : `Refusing to sweep: the indexer reports ${scan.reportedTotal} inscriptions but only ${scan.retrievedCount} were retrieved. Rescan the wallet before sweeping.`,
+    );
+  }
 }
 
 function readInscriptionId(row: unknown): string | null {

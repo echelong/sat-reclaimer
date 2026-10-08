@@ -143,6 +143,18 @@ function mapTransportError(error: unknown, label: string): ReclaimerError {
   );
 }
 
+/**
+ * Classify a signing rejection that is about payload, size or input limits,
+ * as opposed to a user decision. Used to fall back from one large transaction
+ * to the minimum number of sequential batches — never to weaken validation.
+ */
+export function isWalletSizeLimitError(error: unknown): boolean {
+  const message = errorMessage(error);
+  return /too\s*(many|large)|payload|entity too large|exceeds?\s+.*(limit|size|maximum)|maximum\s+.*(inputs|size|psbt)|input\s+limit|psbt\s+(too\s+)?(large|big)|request\s+too\s+large|413/i.test(
+    message,
+  );
+}
+
 /** Call a Sats Connect method with a timeout and structured error mapping. */
 async function call<Method extends keyof Requests>(
   method: Method,
@@ -294,6 +306,10 @@ export async function scanOrdinals(args: {
     grossSats: sumSats(reduction.utxos),
     pagesFetched: pagination.pagesFetched,
     reportedTotal: pagination.reportedTotal,
+    retrievedCount: pagination.retrievedCount,
+    duplicateIdCount: pagination.duplicateIdCount,
+    complete: pagination.complete,
+    warnings: pagination.warnings,
     truncated: pagination.truncated,
   };
 }
@@ -317,7 +333,13 @@ export async function signPsbt(args: {
   psbtBase64: string;
   ordinalsAddress: string;
   inputIndexes: number[];
+  /** When set, a Mainnet signing request still requires the operator opt-in flag. */
+  network?: AppNetwork;
+  mainnetEnabled?: boolean;
 }): Promise<SignedPsbtResult> {
+  if (args.network === 'Mainnet') {
+    assertNetworkAllowed('Mainnet', args.mainnetEnabled ?? false);
+  }
   if (args.inputIndexes.length === 0) {
     throw new ReclaimerError(
       'VERIFICATION_FAILED',
@@ -343,66 +365,12 @@ export async function signPsbt(args: {
   return { psbt: result.psbt, txid: result.txid };
 }
 
-/**
- * Broadcasting is gated behind an explicit build flag and is never available on
- * Mainnet in this milestone. The UI keeps this as its own step after local
- * verification, and it is disabled by default.
- */
-export const BROADCAST_BUILD_FLAG = 'NEXT_PUBLIC_ENABLE_SIGNET_BROADCAST';
-
-export function isBroadcastEnabled(rawFlag: string | undefined): boolean {
-  return rawFlag === 'true';
-}
-
-export function assertBroadcastAllowed(args: {
-  network: AppNetwork;
-  broadcastEnabled: boolean;
-  verificationPassed: boolean;
-}): void {
-  if (args.network === 'Mainnet') {
-    throw new ReclaimerError(
-      'BROADCAST_DISABLED',
-      'Mainnet broadcasting is locked in code for this milestone.',
-    );
-  }
-  if (!args.broadcastEnabled) {
-    throw new ReclaimerError(
-      'BROADCAST_DISABLED',
-      `Broadcasting is disabled. Build with ${BROADCAST_BUILD_FLAG}=true to enable Signet/Testnet broadcasting.`,
-    );
-  }
-  if (!args.verificationPassed) {
-    throw new ReclaimerError(
-      'BROADCAST_DISABLED',
-      'The signed PSBT must pass local verification before anything can be broadcast.',
-    );
-  }
-}
-
-/**
- * Broadcast an already-signed PSBT on Signet/Testnet.
+/*
+ * Broadcasting deliberately does not live here.
  *
- * NOTE: sats-connect fuses signing and broadcasting into `signPsbt`, so this
- * path asks the wallet to sign again with `broadcast: true`. It is code-gated
- * and disabled by default; it has not been exercised against a live wallet.
+ * Sats Connect fuses signing and broadcasting into `signPsbt`, and a wallet
+ * that both signs and broadcasts would collapse two separate operations into
+ * one opaque approval. Instead the flow is: sign (`broadcast: false`, always),
+ * verify and finalize the signed PSBT locally, and then submit the raw bytes
+ * through `src/lib/broadcast.ts`. Xverse is never asked to broadcast.
  */
-export async function broadcastSignedPsbt(args: {
-  psbtBase64: string;
-  ordinalsAddress: string;
-  inputIndexes: number[];
-  network: AppNetwork;
-  broadcastEnabled: boolean;
-  verificationPassed: boolean;
-}): Promise<{ txid?: string }> {
-  assertBroadcastAllowed(args);
-  const result = await call(
-    'signPsbt',
-    {
-      psbt: args.psbtBase64,
-      signInputs: { [args.ordinalsAddress]: args.inputIndexes },
-      broadcast: true,
-    },
-    INTERACTIVE_TIMEOUT_MS,
-  );
-  return { txid: result?.txid };
-}

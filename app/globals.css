@@ -1,77 +1,625 @@
+/*
+ * SAT//RECLAIMER — design system foundation.
+ *
+ * One dark, high-contrast, terminal-adjacent system shared by the public landing
+ * page (`/`) and the reclaim console (`/app`). Tokens first, then reset, then the
+ * primitives both surfaces reuse. Surfaces themselves live in landing.css and
+ * console.css.
+ *
+ * Rules this file follows:
+ *  - Neon is a highlight, never a background wash. Glow is reserved for state.
+ *  - Every animation degrades to a static, fully legible layout under
+ *    `prefers-reduced-motion: reduce` (see the block at the bottom).
+ *  - Nothing here changes size on hover except transform/shadow, so there are no
+ *    layout shifts.
+ */
+
 :root {
   color-scheme: dark;
-  --bg: #090b0c;
-  --panel: #111518;
-  --line: #273039;
-  --text: #edf1f3;
-  --muted: #9ba7af;
-  --accent: #f2a900;
-  --danger: #ff6b57;
+
+  /* Surfaces ------------------------------------------------------------ */
+  --bg: #080b12;
+  --bg-deep: #05070c;
+  --surface: #101522;
+  --surface-2: #141a29;
+  --surface-3: #1a2334;
+  --line: #1d2740;
+  --line-strong: #2b3a5e;
+
+  /* Text ------------------------------------------------------------------
+   * Contrast against --bg is checked, not eyeballed. --text ≈ 16:1,
+   * --text-dim ≈ 8.2:1, --text-faint ≈ 5.7:1 — the last one matters because it
+   * carries 10–11px monospace labels, and the earlier #5f6f8e only reached
+   * 3.9:1, which fails WCAG AA for text that small. */
+  --text: #e8eef7;
+  --text-dim: #98a8c4;
+  --text-faint: #7b8aa6;
+
+  /* Brand --------------------------------------------------------------- */
+  --cyan: #00f5ff;
+  --cyan-deep: #0a8f9c;
+  --purple: #a855f7;
+  --magenta: #ff2e88;
+  --orange: #f7931a;
+
+  /* Semantic ------------------------------------------------------------ */
+  --ok: #3fe0a0;
+  --danger: #ff5c6c;
+  --warn: #ffb020;
+
+  /* Shape --------------------------------------------------------------- */
+  --r-xs: 6px;
+  --r-sm: 9px;
+  --r: 13px;
+  --r-lg: 18px;
+  --r-xl: 26px;
+
+  /* Depth --------------------------------------------------------------- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.9);
+  --shadow-lg: 0 40px 90px -50px rgba(0, 0, 0, 1);
+  --glow-cyan: 0 0 22px -4px rgba(0, 245, 255, 0.55);
+  --glow-magenta: 0 0 26px -4px rgba(255, 46, 136, 0.5);
+  --glow-orange: 0 0 26px -4px rgba(247, 147, 26, 0.5);
+
+  --nav-h: 62px;
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
-* { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
-body { background-image: radial-gradient(circle at 15% 0%, #1b2024 0, transparent 30rem); }
-button, input, select { font: inherit; }
-.shell { width: min(1080px, calc(100% - 32px)); margin: 0 auto; padding: 72px 0 120px; }
-.hero { max-width: 800px; margin-bottom: 32px; }
-.eyebrow { color: var(--accent); letter-spacing: .13em; font-size: 12px; font-weight: 800; }
-h1 { font-size: clamp(40px, 7vw, 76px); line-height: .98; letter-spacing: -.045em; margin: 14px 0 22px; }
-h2 { margin: 0 0 20px; font-size: 19px; }
-.lede { color: var(--muted); font-size: 20px; line-height: 1.5; max-width: 720px; }
-.panel { border: 1px solid var(--line); background: color-mix(in srgb, var(--panel) 92%, transparent); border-radius: 18px; padding: 24px; margin-bottom: 18px; }
-.warning { border-color: #57342f; display: flex; gap: 14px; color: #ffd8d1; }
-.warning strong { color: var(--danger); white-space: nowrap; }
-.grid.two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-.grid.two .panel { margin: 0 0 18px; }
-label { display: grid; gap: 8px; color: var(--muted); font-size: 13px; }
-input, select { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #090c0e; color: var(--text); padding: 12px 13px; outline: none; }
-input:focus, select:focus { border-color: #61717c; }
-button { border: 0; border-radius: 10px; background: var(--text); color: #0a0c0d; font-weight: 800; padding: 12px 16px; cursor: pointer; margin-top: 16px; }
-button:disabled { opacity: .4; cursor: not-allowed; }
-dl { margin: 22px 0 0; display: grid; gap: 12px; }
-dl div { display: grid; gap: 4px; }
-dt { font-size: 11px; text-transform: uppercase; color: var(--muted); }
-dd { margin: 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
-.stats div { padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
-.stats span, .stats strong { display: block; }
-.stats span { color: var(--muted); font-size: 11px; margin-bottom: 8px; }
-.stats strong { font-size: 17px; }
-.formGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.formGrid .wide { grid-column: 1 / -1; }
-.summary { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px; color: var(--muted); }
-.summary strong { color: var(--accent); }
-.batchList { display: grid; gap: 10px; margin-top: 20px; }
-.batch { display: flex; align-items: center; justify-content: space-between; gap: 20px; border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
-.batch div { display: grid; gap: 5px; }
-.batch span { color: var(--muted); font-size: 12px; }
-.batch button { margin: 0; white-space: nowrap; }
-.status { border: 1px solid var(--line); border-radius: 12px; padding: 14px; color: var(--muted); }
-code { color: var(--accent); }
-.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-.row button { margin-top: 0; }
-button.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
-.muted { color: var(--muted); font-size: 12px; line-height: 1.55; }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; overflow-wrap: anywhere; }
-.notes { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.6; display: grid; gap: 6px; }
-.checks { margin: 8px 0 0; padding-left: 0; list-style: none; display: grid; gap: 4px; font-size: 12px; }
-.checks .ok { color: #8fd694; }
-.checks .bad { color: var(--danger); }
-.verdict { font-size: 12px; }
-.verdict.ok { color: #8fd694; }
-.verdict.bad { color: var(--danger); }
-.check { display: grid; grid-template-columns: 20px 1fr; gap: 10px; align-items: start; color: var(--text); font-size: 14px; line-height: 1.5; }
-.check input { width: auto; margin-top: 3px; }
-.quarantine { margin-top: 14px; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
-.quarantine summary { cursor: pointer; color: var(--muted); font-size: 13px; }
-.quarantine .notes { margin-top: 10px; }
-.batch .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.batch .actions button { margin: 0; }
-.status.error { border-color: #57342f; color: #ffd8d1; }
-@media (max-width: 760px) {
-  .shell { padding-top: 38px; }
-  .grid.two, .formGrid { grid-template-columns: 1fr; }
-  .formGrid .wide { grid-column: auto; }
-  .stats { grid-template-columns: 1fr; }
-  .warning, .batch { align-items: flex-start; flex-direction: column; }
+
+/* Typography variables ---------------------------------------------------
+ *
+ * These live on the `html` *element* selector (specificity 0,0,1) rather than in
+ * `:root` (which is a pseudo-class, 0,1,0) on purpose. `next/font` publishes its
+ * generated families through variable classes applied to `<html>`, and a class
+ * also scores 0,1,0 — so a `:root` declaration here would tie with it and win on
+ * source order, silently disabling all three web fonts and falling back to
+ * system type. Keeping these one specificity level lower means the loaded fonts
+ * always win, while still providing a sane stack if a font ever fails to load. */
+html {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: var(--font-sans);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* Reset ----------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--nav-h) + 18px);
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* Ambient depth: two soft light sources plus a fine technical grid. Both are
+ * pointer-transparent and paint once, so they cost nothing per frame. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1100px 620px at 10% -12%, rgba(0, 245, 255, 0.11), transparent 62%),
+    radial-gradient(880px 560px at 96% 2%, rgba(168, 85, 247, 0.13), transparent 60%),
+    radial-gradient(700px 520px at 60% 108%, rgba(255, 46, 136, 0.07), transparent 65%);
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    linear-gradient(to right, rgba(43, 58, 94, 0.34) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(43, 58, 94, 0.34) 1px, transparent 1px);
+  background-size: 68px 68px;
+  mask-image: radial-gradient(120% 90% at 50% 0%, #000 0%, transparent 78%);
+  -webkit-mask-image: radial-gradient(120% 90% at 50% 0%, #000 0%, transparent 78%);
+}
+
+img,
+svg,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+ol,
+dl,
+figure {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: rgba(0, 245, 255, 0.28);
+  color: #fff;
+}
+
+/* Visually hidden but announced. Used to expose animated counters and the
+ * canvas visualization to assistive technology as plain text. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link ------------------------------------------------------------- */
+
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 200;
+  padding: 10px 16px;
+  border-radius: var(--r-sm);
+  background: var(--cyan);
+  color: #04121a;
+  font: 700 13px/1 var(--font-mono), monospace;
+  letter-spacing: 0.06em;
+  transition: top 0.18s var(--ease);
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+/* Typography helpers ---------------------------------------------------- */
+
+.display {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+}
+
+.mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-ligatures: none;
+}
+
+.num {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* The eyebrow: a small monospace kicker with a leading tick. */
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+
+.kicker::before {
+  content: '';
+  width: 22px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--cyan));
+}
+
+.kicker.quiet {
+  color: var(--text-faint);
+}
+
+.kicker.quiet::before {
+  background: linear-gradient(to right, transparent, var(--line-strong));
+}
+
+.section-title {
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  font-size: clamp(30px, 4.4vw, 54px);
+  margin: 14px 0 0;
+}
+
+.section-lede {
+  margin-top: 18px;
+  max-width: 62ch;
+  color: var(--text-dim);
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.hl {
+  color: var(--cyan);
+}
+
+/* Layout ---------------------------------------------------------------- */
+
+.wrap {
+  width: min(1180px, calc(100% - 40px));
+  margin-inline: auto;
+}
+
+.section {
+  position: relative;
+  z-index: 1;
+  padding: clamp(72px, 11vh, 132px) 0;
+}
+
+.section-head {
+  max-width: 780px;
+  margin-bottom: 54px;
+}
+
+/* Buttons --------------------------------------------------------------- */
+
+.btn {
+  --btn-bg: transparent;
+  --btn-fg: var(--text);
+  --btn-line: var(--line-strong);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 20px;
+  min-height: 46px;
+  border: 1px solid var(--btn-line);
+  border-radius: var(--r-sm);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-family: var(--font-mono), monospace;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    transform 0.16s var(--ease),
+    box-shadow 0.2s var(--ease),
+    border-color 0.2s var(--ease),
+    background-color 0.2s var(--ease),
+    color 0.2s var(--ease);
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--cyan);
+  color: #ffffff;
+  box-shadow: var(--glow-cyan);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.99);
+}
+
+.btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  --btn-bg: linear-gradient(135deg, var(--cyan) 0%, #24e2d0 55%, #3ad0b4 100%);
+  --btn-fg: #04141a;
+  --btn-line: transparent;
+  box-shadow: 0 10px 34px -18px rgba(0, 245, 255, 0.9);
+}
+
+.btn-primary:hover:not(:disabled) {
+  color: #04141a;
+  box-shadow:
+    0 14px 40px -16px rgba(0, 245, 255, 1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+
+.btn-magenta {
+  --btn-bg: linear-gradient(135deg, var(--magenta) 0%, #d94ad0 100%);
+  --btn-fg: #1a0410;
+  --btn-line: transparent;
+}
+
+.btn-magenta:hover:not(:disabled) {
+  color: #1a0410;
+  box-shadow: var(--glow-magenta);
+  border-color: transparent;
+}
+
+.btn-ghost {
+  --btn-line: var(--line-strong);
+}
+
+.btn-sm {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 11.5px;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* Chips / tags ---------------------------------------------------------- */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: 100px;
+  background: rgba(16, 21, 34, 0.72);
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.tag-cyan {
+  border-color: rgba(0, 245, 255, 0.4);
+  color: var(--cyan);
+  background: rgba(0, 245, 255, 0.07);
+}
+
+.tag-warn {
+  border-color: rgba(255, 176, 32, 0.42);
+  color: var(--warn);
+  background: rgba(255, 176, 32, 0.08);
+}
+
+.tag-danger {
+  border-color: rgba(255, 92, 108, 0.45);
+  color: var(--danger);
+  background: rgba(255, 92, 108, 0.09);
+}
+
+.tag-ok {
+  border-color: rgba(63, 224, 160, 0.42);
+  color: var(--ok);
+  background: rgba(63, 224, 160, 0.08);
+}
+
+.tag-orange {
+  border-color: rgba(247, 147, 26, 0.45);
+  color: var(--orange);
+  background: rgba(247, 147, 26, 0.09);
+}
+
+/* Live dot */
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 0 currentColor;
+  animation: pulse-dot 2.4s var(--ease) infinite;
+}
+
+/* Surfaces -------------------------------------------------------------- */
+
+.card {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background:
+    linear-gradient(180deg, rgba(26, 35, 52, 0.72) 0%, rgba(16, 21, 34, 0.86) 100%);
+  box-shadow: var(--shadow);
+}
+
+/* Corner brackets — the recurring technical detail of the visual language. */
+.bracket {
+  position: relative;
+}
+
+.bracket::before,
+.bracket::after {
+  content: '';
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border-color: var(--line-strong);
+  border-style: solid;
+  pointer-events: none;
+  transition: border-color 0.25s var(--ease);
+}
+
+.bracket::before {
+  top: -1px;
+  left: -1px;
+  border-width: 1px 0 0 1px;
+  border-top-left-radius: var(--r-lg);
+}
+
+.bracket::after {
+  right: -1px;
+  bottom: -1px;
+  border-width: 0 1px 1px 0;
+  border-bottom-right-radius: var(--r-lg);
+}
+
+.bracket:hover::before,
+.bracket:hover::after {
+  border-color: var(--cyan);
+}
+
+.hairline {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: linear-gradient(to right, transparent, var(--line-strong), transparent);
+}
+
+/* Scroll reveal --------------------------------------------------------- */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.72s var(--ease),
+    transform 0.72s var(--ease);
+  will-change: opacity, transform;
+}
+
+.reveal[data-visible='true'] {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+
+/* Keyframes ------------------------------------------------------------- */
+
+@keyframes pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  70% {
+    box-shadow: 0 0 0 7px transparent;
+    opacity: 0.75;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    opacity: 1;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes scan-sweep {
+  0% {
+    transform: translateY(-110%);
+  }
+  100% {
+    transform: translateY(420%);
+  }
+}
+
+@keyframes grid-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 68px 68px;
+  }
+}
+
+@keyframes glow-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Reduced motion --------------------------------------------------------
+ * Everything must stay readable and complete without animation. Reveals snap
+ * to their final state; ambient loops stop; smooth scrolling is disabled.
+ *
+ * `animation-delay` and `transition-delay` are reset along with the durations,
+ * and that is not cosmetic. Several entry animations carry multi-second delays
+ * with `fill-mode: both`, which renders the *from* keyframe until the delay
+ * elapses — and a browser that suppresses animation outright leaves them there
+ * permanently. Zeroing the delay and the duration together guarantees every
+ * animated element lands on its finished, fully legible state instead. */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
 }

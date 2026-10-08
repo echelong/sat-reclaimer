@@ -5,6 +5,7 @@ import {
   APP_NETWORKS,
   MAX_FEE_RATE_SAT_VB,
   MAX_STANDARD_TX_WEIGHT,
+  MAX_SWEEP_WEIGHT,
   P2TR_KEYPATH_INPUT_WEIGHT,
   assertFeeRateAllowed,
   assertNetworkAllowed,
@@ -23,21 +24,33 @@ import { KEY_B_PRIV, ORDINALS, OTHER_ADDRESS, taprootFor } from './fixtures';
 const MAINNET_TAPROOT = taprootFor(KEY_B_PRIV, btc.NETWORK).address;
 
 describe('mainnet gate', () => {
-  it('is closed unless the flag is exactly "true"', () => {
+  it('is disabled by default and unless the flag is exactly "true"', () => {
     expect(isMainnetEnabled(undefined)).toBe(false);
+    expect(isMainnetEnabled('')).toBe(false);
     expect(isMainnetEnabled('false')).toBe(false);
     expect(isMainnetEnabled('1')).toBe(false);
     expect(isMainnetEnabled('TRUE')).toBe(false);
     expect(isMainnetEnabled('true')).toBe(true);
   });
 
-  it('locks mainnet and leaves test chains open', () => {
+  it('refuses Mainnet by default', () => {
     expect(() => assertNetworkAllowed('Mainnet', false)).toThrow(
       expect.objectContaining({ code: 'MAINNET_DISABLED' }),
     );
-    expect(() => assertNetworkAllowed('Mainnet', true)).not.toThrow();
+    expect(() => assertNetworkAllowed('Mainnet', isMainnetEnabled(undefined))).toThrow(
+      expect.objectContaining({ code: 'MAINNET_DISABLED' }),
+    );
+  });
+
+  it('allows Mainnet only through the explicit operator flag', () => {
+    expect(() => assertNetworkAllowed('Mainnet', isMainnetEnabled('true'))).not.toThrow();
     expect(() => assertNetworkAllowed('Signet', false)).not.toThrow();
     expect(() => assertNetworkAllowed('Testnet', false)).not.toThrow();
+  });
+
+  it('keeps a safety margin below the relay weight limit', () => {
+    expect(MAX_SWEEP_WEIGHT).toBeGreaterThan(0);
+    expect(MAX_SWEEP_WEIGHT).toBeLessThan(MAX_STANDARD_TX_WEIGHT);
   });
 
   it('exposes exactly the supported networks, mainnet last', () => {

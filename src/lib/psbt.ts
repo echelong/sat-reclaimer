@@ -2,7 +2,9 @@ import * as btc from '@scure/btc-signer';
 import { base64, hex } from '@scure/base';
 import {
   MAX_STANDARD_TX_WEIGHT,
+  MAX_SWEEP_WEIGHT,
   assertFeeRateAllowed,
+  assertNetworkAllowed,
   deriveOrdinalTaproot,
   estimateSweepWeight,
   toScureNetwork,
@@ -11,11 +13,12 @@ import {
 } from './bitcoin';
 import { ReclaimerError } from './errors';
 import { uniqueByOutpoint, countInscriptions, sumSats } from './ordinals';
-import { decodePsbt } from './verify';
+import { decodePsbt, parsePsbt } from './verify';
 import type {
   AppNetwork,
   BuiltBatch,
   ReclaimBatch,
+  ReclaimUtxo,
   SignedPsbtExpectation,
 } from './types';
 
@@ -35,8 +38,11 @@ export function buildSweepBatch(args: {
   destination: string;
   feeRateSatVb: bigint;
   network: AppNetwork;
+  /** Must be true to build on Mainnet. Defaults to off. */
+  mainnetEnabled?: boolean;
 }): BuiltBatch {
   const { batch, destination, network } = args;
+  assertNetworkAllowed(network, args.mainnetEnabled ?? false);
   assertFeeRateAllowed(args.feeRateSatVb);
   if (batch.utxos.length === 0) {
     throw new ReclaimerError('EMPTY_BATCH', 'Cannot build a batch with no inputs.');
@@ -229,5 +235,247 @@ export function expectationFor(batch: BuiltBatch, inputScriptHex: string): Signe
     inputOutpoints: batch.inputOutpoints,
     inputValues: new Map(batch.utxos.map((utxo) => [utxo.outpoint, utxo.amount])),
     signInputIndexes: batch.signInputIndexes,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Whole-wallet sweep planning                                                */
+/* -------------------------------------------------------------------------- */
+
+export type SweepMeasurement = {
+  inputCount: number;
+  inputSats: bigint;
+  outputCount: number;
+  outputSats: bigint;
+  feeSats: bigint;
+  weight: number;
+  vsize: number;
+  /** Miner fee as a percentage of the sats swept in. */
+  feePercent: number;
+};
+
+export type SweepPlan = {
+  network: AppNetwork;
+  destination: string;
+  outputScriptHex: string;
+  feeRateSatVb: bigint;
+  batches: BuiltBatch[];
+  measurements: SweepMeasurement[];
+  singleTransaction: boolean;
+  batchCount: number;
+  inputCount: number;
+  inputSats: bigint;
+  outputSats: bigint;
+  feeSats: bigint;
+  feePercent: number;
+  /** Heaviest single transaction in the plan. */
+  maxWeight: number;
+  maxVsize: number;
+  /** Aggregate weight across every transaction, batching overhead included. */
+  totalWeight: number;
+};
+
+function feePercentOf(feeSats: bigint, inputSats: bigint): number {
+  if (inputSats <= 0n) return 0;
+  return Number((feeSats * 10_000n) / inputSats) / 100;
+}
+
+/**
+ * Measure the exact relay weight the finalized transaction would have, taken
+ * from the serialized PSBT.
+ *
+ * No key material is involved: each unsigned key-path input receives a
+ * placeholder signature of exactly the size Xverse returns (a 64-byte BIP340
+ * signature for SIGHASH_DEFAULT). Finalized weight depends only on signature
+ * size, not on the key or the signature bytes, so this is the real weight the
+ * signed transaction will have — not an approximate per-input rule.
+ */
+export function measureFinalizedWeight(psbtBase64: string): number {
+  const tx = parsePsbt(psbtBase64);
+  for (let index = 0; index < tx.inputsLength; index += 1) {
+    if (!tx.getInput(index).tapKeySig) {
+      tx.updateInput(index, { tapKeySig: new Uint8Array(64) }, true);
+    }
+  }
+  for (let index = 0; index < tx.inputsLength; index += 1) tx.finalizeIdx(index);
+  return tx.weight;
+}
+
+function measurementOf(
+  psbtBase64: string,
+  network: AppNetwork,
+  knownWeight?: number,
+): SweepMeasurement {
+  const decoded = decodePsbt(psbtBase64, network);
+  const weight = knownWeight ?? measureFinalizedWeight(psbtBase64);
+  return {
+    inputCount: decoded.inputCount,
+    inputSats: decoded.inputSats,
+    outputCount: decoded.outputCount,
+    outputSats: decoded.outputSats,
+    feeSats: decoded.feeSats,
+    weight,
+    vsize: vsizeFor(weight),
+    feePercent: feePercentOf(decoded.feeSats, decoded.inputSats),
+  };
+}
+
+/** Decode a serialized PSBT and report its exact measured size and accounting. */
+export function measureSweep(psbtBase64: string, network: AppNetwork): SweepMeasurement {
+  return measurementOf(psbtBase64, network);
+}
+
+/**
+ * Refuse to sweep when the aggregate result is uneconomic. Unlike a per-UTXO
+ * rule, this evaluates the whole selected set: 1,083 small UTXOs whose combined
+ * value comfortably covers the fee are a valid sweep even though any one of
+ * them alone is not.
+ */
+export function assertSweepEconomic(inputSats: bigint, feeSats: bigint, outputSats: bigint): void {
+  if (outputSats <= 0n || inputSats <= feeSats) {
+    throw new ReclaimerError(
+      'FEE_EXCEEDS_VALUE',
+      `The sweep is uneconomic: ${inputSats} sats in, ${feeSats} sats fee, leaving ${outputSats} sats. Lower the fee rate or include more value.`,
+    );
+  }
+}
+
+function batchOf(chunk: ReclaimUtxo[], index: number, batchCount: number): ReclaimBatch {
+  return {
+    index,
+    batchCount,
+    utxos: chunk,
+    inscriptionCount: countInscriptions(chunk),
+    grossSats: sumSats(chunk),
+    weight: 0,
+    vsize: 0,
+  };
+}
+
+/**
+ * Plan the largest safe sweep of a whole selection.
+ *
+ * 1. Attempt the entire selection in one transaction and measure its exact
+ *    weight from the serialized PSBT.
+ * 2. If it fits under the relay policy weight limit (with a safety margin),
+ *    that is the plan: one transaction, one destination output.
+ * 3. Otherwise compute the largest input count that fits from two real
+ *    measurements of this exact transaction shape, and split into the minimum
+ *    number of sequential batches.
+ *
+ * `maxInputsPerBatch` lets the caller force a smaller batch after a wallet
+ * rejects a large payload, without touching any transaction validation.
+ */
+export function planSweep(args: {
+  utxos: readonly ReclaimUtxo[];
+  ordinals: { publicKeyHex: string; address: string };
+  destination: string;
+  feeRateSatVb: bigint;
+  network: AppNetwork;
+  mainnetEnabled?: boolean;
+  maxInputsPerBatch?: number;
+}): SweepPlan {
+  const { network } = args;
+  assertNetworkAllowed(network, args.mainnetEnabled ?? false);
+  assertFeeRateAllowed(args.feeRateSatVb);
+
+  const utxos = uniqueByOutpoint(args.utxos);
+  if (utxos.length === 0) {
+    throw new ReclaimerError('EMPTY_BATCH', 'No UTXOs selected to sweep.');
+  }
+
+  const destinationInfo = validateDestinationAddress(args.destination, network);
+  const build = (chunk: ReclaimUtxo[], index: number, batchCount: number): BuiltBatch =>
+    buildSweepBatch({
+      batch: batchOf(chunk, index, batchCount),
+      ordinals: args.ordinals,
+      destination: destinationInfo.address,
+      feeRateSatVb: args.feeRateSatVb,
+      network,
+      mainnetEnabled: args.mainnetEnabled ?? false,
+    });
+
+  // 1. Can the entire selection be a single transaction? When the caller has
+  // already forced a smaller batch size (wallet fallback), skip the oversized
+  // attempt instead of building a transaction that will never be signed.
+  const forced = args.maxInputsPerBatch;
+  const attemptWhole = forced === undefined || forced >= utxos.length;
+
+  let attempt: BuiltBatch | null = null;
+  let attemptWeight: number | null = null;
+  let maxPerBatch = utxos.length;
+
+  if (attemptWhole) {
+    attempt = build(utxos, 0, 1);
+    attemptWeight = measureFinalizedWeight(attempt.psbtBase64);
+    if (attemptWeight > MAX_SWEEP_WEIGHT && utxos.length > 1) {
+      // For a homogeneous P2TR sweep the finalized weight is affine in the input
+      // count: W(n) = intercept + n * slope. Two real measurements pin it exactly.
+      const one = build(utxos.slice(0, 1), 0, 1);
+      const weightOne = measureFinalizedWeight(one.psbtBase64);
+      const slope = (attemptWeight - weightOne) / (utxos.length - 1);
+      const intercept = weightOne - slope;
+      maxPerBatch =
+        slope > 0 ? Math.max(1, Math.floor((MAX_SWEEP_WEIGHT - intercept) / slope)) : utxos.length;
+    }
+  }
+  if (forced !== undefined) {
+    maxPerBatch = Math.min(maxPerBatch, Math.max(1, forced));
+  }
+  maxPerBatch = Math.max(1, Math.min(maxPerBatch, utxos.length));
+
+  // 2. Build the plan, reusing the measured single-transaction build when it fits.
+  let batches: BuiltBatch[];
+  let knownWeights: (number | undefined)[];
+  if (maxPerBatch >= utxos.length && attempt !== null && attemptWeight !== null) {
+    batches = [{ ...attempt, index: 0, batchCount: 1 }];
+    knownWeights = [attemptWeight];
+  } else {
+    const chunks: ReclaimUtxo[][] = [];
+    for (let index = 0; index < utxos.length; index += maxPerBatch) {
+      chunks.push(utxos.slice(index, index + maxPerBatch));
+    }
+    batches = chunks.map((chunk, index) => build(chunk, index, chunks.length));
+    knownWeights = batches.map(() => undefined);
+  }
+
+  const measurements = batches.map((built, index) =>
+    measurementOf(built.psbtBase64, network, knownWeights[index]),
+  );
+  for (const [index, measurement] of measurements.entries()) {
+    if (measurement.weight > MAX_SWEEP_WEIGHT) {
+      throw new ReclaimerError(
+        'WEIGHT_LIMIT_EXCEEDED',
+        `Sweep batch ${index + 1} measures ${measurement.weight} WU, above the ${MAX_SWEEP_WEIGHT} WU safety budget.`,
+      );
+    }
+  }
+
+  const inputSats = measurements.reduce((total, measurement) => total + measurement.inputSats, 0n);
+  const outputSats = measurements.reduce((total, measurement) => total + measurement.outputSats, 0n);
+  const feeSats = measurements.reduce((total, measurement) => total + measurement.feeSats, 0n);
+  const totalWeight = measurements.reduce((total, measurement) => total + measurement.weight, 0);
+  const maxWeight = measurements.reduce((max, measurement) => Math.max(max, measurement.weight), 0);
+  const maxVsize = measurements.reduce((max, measurement) => Math.max(max, measurement.vsize), 0);
+
+  assertSweepEconomic(inputSats, feeSats, outputSats);
+
+  return {
+    network,
+    destination: destinationInfo.address,
+    outputScriptHex: destinationInfo.scriptHex,
+    feeRateSatVb: args.feeRateSatVb,
+    batches,
+    measurements,
+    singleTransaction: batches.length === 1,
+    batchCount: batches.length,
+    inputCount: utxos.length,
+    inputSats,
+    outputSats,
+    feeSats,
+    feePercent: feePercentOf(feeSats, inputSats),
+    maxWeight,
+    maxVsize,
+    totalWeight,
   };
 }

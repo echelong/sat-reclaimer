@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   ASSET_DETECTION_LIMITATIONS,
   assessUtxo,
+  assertScanComplete,
   countInscriptions,
   dedupeInscriptionUtxos,
   fetchAllInscriptions,
@@ -210,14 +211,58 @@ describe('pagination', () => {
     expect(result.truncated).toBe(false);
   });
 
-  it('stops when a short page arrives', async () => {
+  it('does NOT stop on a short page when the indexer reported more', async () => {
     const rows = Array.from({ length: 30 }, (_, index) => ({ inscriptionId: `i${index}` }));
     const fetchPage = paged(rows, 1000, 100);
 
     const result = await fetchAllInscriptions(fetchPage, { limit: 100 });
 
     expect(result.rows).toHaveLength(30);
-    expect(result.pagesFetched).toBe(1);
+    // Page 1 plus the explicit empty page that signals the end of the data.
+    expect(result.pagesFetched).toBe(2);
+    expect(result.truncated).toBe(false);
+    expect(result.complete).toBe(false);
+  });
+
+  it('retrieves a full 1,083-inscription wallet across 60-row capped pages', async () => {
+    const rows = Array.from({ length: 1083 }, (_, index) => ({
+      inscriptionId: `insc-${index}`,
+      output: `${txidFor(index + 1)}:0`,
+      postage: '546',
+    }));
+    // Xverse returns a capped 60-row page even when asked for 100.
+    const fetchPage = vi.fn(async ({ offset, limit }: { offset: number; limit: number }) => ({
+      total: 1083,
+      offset,
+      limit,
+      inscriptions: rows.slice(offset, offset + 60),
+    }));
+
+    const result = await fetchAllInscriptions(fetchPage, { limit: 100 });
+
+    expect(result.retrievedCount).toBe(1083);
+    expect(result.reportedTotal).toBe(1083);
+    expect(result.complete).toBe(true);
+    expect(result.truncated).toBe(false);
+    expect(result.pagesFetched).toBe(19);
+  });
+
+  it('deduplicates repeated inscription ids globally across pages', async () => {
+    const fetchPage = vi.fn(async ({ offset, limit }: { offset: number; limit: number }) => ({
+      total: 4,
+      offset,
+      limit,
+      inscriptions:
+        offset === 0
+          ? [{ inscriptionId: 'a' }, { inscriptionId: 'b' }, { inscriptionId: 'c' }]
+          : [{ inscriptionId: 'b' }, { inscriptionId: 'c' }, { inscriptionId: 'd' }],
+    }));
+
+    const result = await fetchAllInscriptions(fetchPage, { limit: 3 });
+
+    expect(result.retrievedCount).toBe(4);
+    expect(result.duplicateIdCount).toBe(2);
+    expect(result.complete).toBe(true);
   });
 
   it('stops a provider that repeats a page instead of advancing', async () => {
@@ -263,6 +308,43 @@ describe('pagination', () => {
     }));
     await fetchAllInscriptions(fetchPage, { limit: 100_000 });
     expect(fetchPage.mock.calls[0][0].limit).toBe(200);
+  });
+
+  it('reduces every fetched page to one UTXO per outpoint (the Select All set)', async () => {
+    // 120 outputs, two inscriptions each, served across capped pages.
+    const utxos = makeUtxos(120, 10_000n);
+    const rows = rowsFor(utxos, 2);
+    const fetchPage = vi.fn(async ({ offset, limit }: { offset: number; limit: number }) => ({
+      total: rows.length,
+      offset,
+      limit,
+      inscriptions: rows.slice(offset, offset + 60),
+    }));
+
+    const page = await fetchAllInscriptions(fetchPage, { limit: 100 });
+    const reduction = scanInscriptionUtxos(page.rows);
+
+    expect(page.retrievedCount).toBe(240);
+    expect(page.complete).toBe(true);
+    expect(reduction.utxos).toHaveLength(120);
+    expect(new Set(reduction.utxos.map((utxo) => utxo.outpoint)).size).toBe(120);
+    // Two inscriptions share each output, but its sats are counted exactly once.
+    expect(countInscriptions(reduction.utxos)).toBe(240);
+    expect(sumSats(reduction.utxos)).toBe(120n * 10_000n);
+  });
+});
+
+describe('scan completeness gate', () => {
+  it('refuses Sweep All on an incomplete or truncated scan', () => {
+    expect(() =>
+      assertScanComplete({ complete: false, reportedTotal: 1083, retrievedCount: 60 }),
+    ).toThrow(expect.objectContaining({ code: 'SCAN_INCOMPLETE' }));
+    expect(() =>
+      assertScanComplete({ complete: false, reportedTotal: null, retrievedCount: 60 }),
+    ).toThrow(expect.objectContaining({ code: 'SCAN_INCOMPLETE' }));
+    expect(() =>
+      assertScanComplete({ complete: true, reportedTotal: 1083, retrievedCount: 1083 }),
+    ).not.toThrow();
   });
 });
 

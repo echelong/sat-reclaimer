@@ -419,22 +419,28 @@ export function verifySignedPsbt(
   let finalTxid: string | null = null;
   let extractable = false;
   let extractDetail = '';
-  try {
-    // Finalize a fresh parse rather than the object holding the signatures we
-    // just checked: finalization consumes `tapKeySig`. Parsing again is cheaper
-    // than cloning, and it independently proves the returned bytes are valid.
-    const finalized = parsePsbt(psbtBase64);
-    for (let index = 0; index < finalized.inputsLength; index += 1) finalized.finalizeIdx(index);
-    weight = finalized.weight;
-    vsize = finalized.vsize;
-    rawTxHex = hex.encode(finalized.extract());
-    finalTxid = finalized.id;
-    extractable = weight <= MAX_STANDARD_TX_WEIGHT;
-    extractDetail = extractable
-      ? `finalized transaction is ${vsize} vB (${weight} WU)`
-      : `finalized transaction weight ${weight} WU exceeds the ${MAX_STANDARD_TX_WEIGHT} WU standard limit`;
-  } catch (error) {
-    extractDetail = `Could not finalize the signed PSBT: ${errorMessage(error)}`;
+  if (!checks.every((check) => check.ok)) {
+    // Finalize only after every independent check has passed: a transaction that
+    // failed verification is never converted into a broadcastable raw artifact.
+    extractDetail = 'Skipped: the transaction did not pass the earlier verification checks, so it was not finalized or serialized.';
+  } else {
+    try {
+      // Finalize a fresh parse rather than the object holding the signatures we
+      // just checked: finalization consumes `tapKeySig`. Parsing again is cheaper
+      // than cloning, and it independently proves the returned bytes are valid.
+      const finalized = parsePsbt(psbtBase64);
+      for (let index = 0; index < finalized.inputsLength; index += 1) finalized.finalizeIdx(index);
+      weight = finalized.weight;
+      vsize = finalized.vsize;
+      rawTxHex = hex.encode(finalized.extract());
+      finalTxid = finalized.id;
+      extractable = weight <= MAX_STANDARD_TX_WEIGHT;
+      extractDetail = extractable
+        ? `finalized transaction is ${vsize} vB (${weight} WU)`
+        : `finalized transaction weight ${weight} WU exceeds the ${MAX_STANDARD_TX_WEIGHT} WU standard limit`;
+    } catch (error) {
+      extractDetail = `Could not finalize the signed PSBT: ${errorMessage(error)}`;
+    }
   }
   add('extractable', 'Signed PSBT is complete and finalizable', extractable, extractDetail);
 

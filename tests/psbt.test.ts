@@ -2,17 +2,20 @@ import { describe, expect, it } from 'vitest';
 import * as btc from '@scure/btc-signer';
 import { base64, hex } from '@scure/base';
 import {
+  MAX_SWEEP_WEIGHT,
   MAX_STANDARD_TX_WEIGHT,
   estimateSweepWeight,
   vsizeFor,
 } from '../src/lib/bitcoin';
 import { ReclaimerError } from '../src/lib/errors';
 import { splitIntoBatches } from '../src/lib/ordinals';
-import { buildSweepBatch, expectationFor, signPsbtRequestFor } from '../src/lib/psbt';
+import { buildSweepBatch, expectationFor, planSweep, signPsbtRequestFor } from '../src/lib/psbt';
 import { verifySignedPsbt } from '../src/lib/verify';
 import { makeUtxo, makeUtxos, taprootFor, KEY_A_PRIV, KEY_B_PRIV, OTHER_ADDRESS, ORDINALS } from './fixtures';
 
 const OTHER = taprootFor(KEY_B_PRIV);
+const MAINNET_ORDINALS = taprootFor(KEY_A_PRIV, btc.NETWORK);
+const MAINNET_DESTINATION = taprootFor(KEY_B_PRIV, btc.NETWORK).address;
 
 function buildFor(utxos: ReturnType<typeof makeUtxo>[], options: {
   destination?: string;
@@ -34,6 +37,20 @@ function buildFor(utxos: ReturnType<typeof makeUtxo>[], options: {
       network: 'Signet',
     }),
   );
+}
+
+/**
+ * Yield a macrotask so vitest's worker RPC can drain between the CPU-heavy
+ * sweep tests. Building, signing, finalizing and measuring 1,000-input
+ * transactions blocks the worker's event loop for tens of seconds; without an
+ * explicit yield the `onTaskUpdate` response can queue longer than birpc's 60 s
+ * timeout, and vitest reports a spurious
+ * `[vitest-worker]: Timeout calling "onTaskUpdate"` even though every assertion
+ * passes. This does not change what is computed or asserted — it only lets the
+ * worker answer its supervisor while the suite runs.
+ */
+async function yieldToEventLoop(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 function signWith(psbtBase64: string, priv: Uint8Array): string {
@@ -110,7 +127,7 @@ describe('Taproot sweep construction', () => {
 describe('M1 signing ladder (local test key, no live wallet)', () => {
   it.each([1, 10, 50, 100, 200, 500])(
     'builds, signs and verifies a %i-input batch with exact accounting',
-    (count) => {
+    async (count) => {
       const utxos = makeUtxos(count, 10_000n);
       const [batch] = buildFor(utxos);
       expect(batch.utxos).toHaveLength(count);
@@ -137,11 +154,13 @@ describe('M1 signing ladder (local test key, no live wallet)', () => {
       expect(finalized.weight).toBe(batch.weight);
       expect(finalized.vsize).toBe(batch.vsize);
       expect(finalized.fee).toBe(batch.feeSats);
+
+      await yieldToEventLoop();
     },
     30_000,
   );
 
-  it('splits a 900+ UTXO wallet and stays buildable batch by batch', () => {
+  it('splits a 900+ UTXO wallet and stays buildable batch by batch', async () => {
     const utxos = makeUtxos(901, 5_000n);
     const batches = splitIntoBatches(utxos, { maxInputs: 200 });
     expect(batches).toHaveLength(5);
@@ -168,11 +187,137 @@ describe('M1 signing ladder (local test key, no live wallet)', () => {
       );
       expect(report.ok).toBe(true);
       expect(built.inputOutpoints).toEqual(batch.utxos.map((utxo) => utxo.outpoint));
+
+      // Five 200-input batches are ~17 s of CPU; drain between them.
+      await yieldToEventLoop();
     }
 
     expect(totalIn).toBe(901n * 5_000n);
     expect(totalIn).toBe(totalOut + totalFee);
   }, 180_000);
+});
+
+describe('whole-wallet sweep planning', () => {
+  const ORDINAL_KEY = {
+    publicKeyHex: ORDINALS.internalPubKeyHex,
+    address: ORDINALS.address,
+  };
+
+  function plan(
+    utxos: ReturnType<typeof makeUtxo>[],
+    overrides: Partial<Parameters<typeof planSweep>[0]> = {},
+  ) {
+    return planSweep({
+      utxos,
+      ordinals: ORDINAL_KEY,
+      destination: OTHER.address,
+      feeRateSatVb: 2n,
+      network: 'Signet',
+      ...overrides,
+    });
+  }
+
+  it('plans the whole 1,083-UTXO wallet as one transaction when it fits', async () => {
+    const result = plan(makeUtxos(1083, 10_000n));
+
+    expect(result.singleTransaction).toBe(true);
+    expect(result.batchCount).toBe(1);
+    expect(result.inputCount).toBe(1083);
+    expect(result.measurements[0].inputCount).toBe(1083);
+    expect(result.measurements[0].weight).toBeLessThanOrEqual(MAX_SWEEP_WEIGHT);
+    expect(result.inputSats).toBe(1083n * 10_000n);
+    expect(result.inputSats).toBe(result.outputSats + result.feeSats);
+    expect(result.feePercent).toBeGreaterThan(0);
+    expect(result.feePercent).toBeLessThan(100);
+    expect(result.maxVsize).toBe(vsizeFor(result.measurements[0].weight));
+
+    await yieldToEventLoop();
+  }, 180_000);
+
+  it('sizes from the measured transaction, not a fixed per-input rule', () => {
+    const one = plan(makeUtxos(1, 10_000n));
+    const ten = plan(makeUtxos(10, 10_000n));
+    const marginal = (ten.measurements[0].weight - one.measurements[0].weight) / 9;
+    // The measured weight equals the exact finalized weight of this transaction.
+    expect(ten.measurements[0].weight).toBe(estimateSweepWeight(10, 34));
+    expect(marginal).toBe(230);
+  });
+
+  it('falls back to the minimum number of batches only when forced by wallet limits', async () => {
+    const result = plan(makeUtxos(450, 10_000n), { maxInputsPerBatch: 200 });
+
+    expect(result.singleTransaction).toBe(false);
+    expect(result.batchCount).toBe(3); // 200 + 200 + 50
+    expect(result.batches.map((batch) => batch.utxos.length)).toEqual([200, 200, 50]);
+    expect(result.measurements.every((m) => m.weight <= MAX_SWEEP_WEIGHT)).toBe(true);
+    expect(result.inputSats).toBe(result.outputSats + result.feeSats);
+
+    await yieldToEventLoop();
+  }, 180_000);
+
+  it('keeps Mainnet opt-in and sweeps it when the operator flag is set', () => {
+    const mainnetOrdinals = {
+      publicKeyHex: MAINNET_ORDINALS.internalPubKeyHex,
+      address: MAINNET_ORDINALS.address,
+    };
+    expect(() =>
+      planSweep({
+        utxos: makeUtxos(5, 10_000n),
+        ordinals: mainnetOrdinals,
+        destination: MAINNET_DESTINATION,
+        feeRateSatVb: 2n,
+        network: 'Mainnet',
+      }),
+    ).toThrow(expect.objectContaining({ code: 'MAINNET_DISABLED' }));
+
+    const built = planSweep({
+      utxos: makeUtxos(5, 10_000n),
+      ordinals: mainnetOrdinals,
+      destination: MAINNET_DESTINATION,
+      feeRateSatVb: 2n,
+      network: 'Mainnet',
+      mainnetEnabled: true,
+    });
+    expect(built.singleTransaction).toBe(true);
+    expect(built.inputCount).toBe(5);
+  });
+
+  it('evaluates fee economics across the whole selected set', async () => {
+    // 1,083 x 546 sats is uneconomic as a single UTXO but a valid aggregate sweep.
+    const result = plan(makeUtxos(1083, 546n), { feeRateSatVb: 1n });
+    expect(result.outputSats).toBeGreaterThan(0n);
+    expect(result.inputSats).toBe(1083n * 546n);
+
+    // One 400-sat UTXO at 5 sat/vB cannot fund its own sweep.
+    expect(() => plan([makeUtxo(1, { amount: 400n })], { feeRateSatVb: 5n })).toThrow(
+      expect.objectContaining({ code: 'FEE_EXCEEDS_VALUE' }),
+    );
+
+    await yieldToEventLoop();
+  }, 180_000);
+
+  it('still detects a mutated signed sweep', () => {
+    const result = plan(makeUtxos(3, 10_000n));
+    const batch = result.batches[0];
+    const tx = btc.Transaction.fromPSBT(base64.decode(batch.psbtBase64));
+    for (let index = 0; index < tx.inputsLength; index += 1) tx.signIdx(ORDINALS.priv, index);
+    tx.updateOutput(0, { amount: tx.getOutput(0).amount! - 1_000n }, true);
+
+    const report = verifySignedPsbt(
+      base64.encode(tx.toPSBT(0)),
+      expectationFor(batch, ORDINALS.scriptHex),
+    );
+    expect(report.ok).toBe(false);
+  });
+
+  it('asks Xverse to sign every intended input and never to broadcast', () => {
+    const result = plan(makeUtxos(10, 10_000n));
+    const request = signPsbtRequestFor(result.batches[0], ORDINALS.address);
+    expect(request.broadcast).toBe(false);
+    expect(request.signInputs[ORDINALS.address]).toEqual(
+      Array.from({ length: 10 }, (_, index) => index),
+    );
+  });
 });
 
 describe('builder refusals', () => {

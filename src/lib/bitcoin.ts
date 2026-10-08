@@ -43,11 +43,19 @@ export function isMainnetEnabled(rawFlag: string | undefined): boolean {
   return rawFlag === 'true';
 }
 
+/**
+ * Safety margin kept below the relay policy weight limit. The sweep planner
+ * measures the exact finalized weight of the transaction it is about to sign and
+ * refuses to approach the limit even though a valid block could carry more.
+ */
+export const SWEEP_WEIGHT_SAFETY_MARGIN = 4_000;
+export const MAX_SWEEP_WEIGHT = MAX_STANDARD_TX_WEIGHT - SWEEP_WEIGHT_SAFETY_MARGIN;
+
 export function assertNetworkAllowed(network: AppNetwork, mainnetEnabled: boolean): void {
   if (network === 'Mainnet' && !mainnetEnabled) {
     throw new ReclaimerError(
       'MAINNET_DISABLED',
-      'Mainnet is locked in code. It stays disabled until the M1 signer proof passes on Signet/Testnet and mainnet is enabled deliberately.',
+      'Mainnet is off. It is disabled by default and can only be enabled explicitly by the operator with NEXT_PUBLIC_ENABLE_MAINNET=true.',
     );
   }
 }

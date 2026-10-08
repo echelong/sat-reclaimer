@@ -31,11 +31,9 @@ vi.mock('sats-connect', () => ({
 }));
 
 import {
-  assertBroadcastAllowed,
-  broadcastSignedPsbt,
   connectXverse,
   disconnectXverse,
-  isBroadcastEnabled,
+  isWalletSizeLimitError,
   scanOrdinals,
   signPsbt,
 } from '../src/lib/xverse';
@@ -376,55 +374,62 @@ describe('signPsbt', () => {
       signPsbt({ psbtBase64: 'x', ordinalsAddress: ORDINALS.address, inputIndexes: [0] }),
     ).rejects.toMatchObject({ code: 'WALLET_USER_REJECTED' });
   });
+
+  it('still refuses a Mainnet request when the operator flag is off', async () => {
+    await expect(
+      signPsbt({
+        psbtBase64: 'x',
+        ordinalsAddress: MAINNET_ORDINALS.address,
+        inputIndexes: [0],
+        network: 'Mainnet',
+        mainnetEnabled: false,
+      }),
+    ).rejects.toMatchObject({ code: 'MAINNET_DISABLED' });
+    expect(requestMock).not.toHaveBeenCalled();
+  });
+
+  it('asks Xverse to sign every intended input without broadcasting', async () => {
+    requestMock.mockResolvedValueOnce({ status: 'success', result: { psbt: 'cHNidP8=' } });
+
+    const result = await signPsbt({
+      psbtBase64: 'unsigned-psbt',
+      ordinalsAddress: MAINNET_ORDINALS.address,
+      inputIndexes: [0, 1, 2],
+      network: 'Mainnet',
+      mainnetEnabled: true,
+    });
+
+    expect(result.psbt).toBe('cHNidP8=');
+    expect(requestMock.mock.calls[0][1]).toEqual({
+      psbt: 'unsigned-psbt',
+      signInputs: { [MAINNET_ORDINALS.address]: [0, 1, 2] },
+      broadcast: false,
+    });
+  });
 });
 
-describe('broadcast gating', () => {
-  const base = {
-    psbtBase64: 'x',
-    ordinalsAddress: ORDINALS.address,
-    inputIndexes: [0],
-    network: 'Signet' as const,
-  };
-
-  it('is off by default', () => {
-    expect(isBroadcastEnabled(undefined)).toBe(false);
-    expect(isBroadcastEnabled('')).toBe(false);
-    expect(isBroadcastEnabled('true')).toBe(true);
+describe('wallet size-limit classification', () => {
+  it('recognises payload, size and input-limit rejections', () => {
+    for (const message of [
+      'PSBT is too large',
+      'Request payload too big',
+      'exceeds maximum inputs',
+      'input limit reached',
+      '413 request entity too large',
+      'Transaction too large for this wallet',
+    ]) {
+      expect(isWalletSizeLimitError(new Error(message))).toBe(true);
+    }
   });
 
-  it('refuses to broadcast on Mainnet, ever', () => {
-    expect(() =>
-      assertBroadcastAllowed({ network: 'Mainnet', broadcastEnabled: true, verificationPassed: true }),
-    ).toThrow(expect.objectContaining({ code: 'BROADCAST_DISABLED' }));
-  });
-
-  it('refuses to broadcast when the build flag is off', async () => {
-    await expect(
-      broadcastSignedPsbt({ ...base, broadcastEnabled: false, verificationPassed: true }),
-    ).rejects.toMatchObject({ code: 'BROADCAST_DISABLED' });
-    expect(requestMock).not.toHaveBeenCalled();
-  });
-
-  it('refuses to broadcast an unverified PSBT', async () => {
-    await expect(
-      broadcastSignedPsbt({ ...base, broadcastEnabled: true, verificationPassed: false }),
-    ).rejects.toMatchObject({ code: 'BROADCAST_DISABLED' });
-    expect(requestMock).not.toHaveBeenCalled();
-  });
-
-  it('sets broadcast:true only when every gate is open', async () => {
-    requestMock.mockResolvedValueOnce({
-      status: 'success',
-      result: { psbt: 'cHNidP8=', txid: 'ab'.repeat(32) },
-    });
-
-    const result = await broadcastSignedPsbt({
-      ...base,
-      broadcastEnabled: true,
-      verificationPassed: true,
-    });
-
-    expect(result.txid).toBe('ab'.repeat(32));
-    expect(requestMock.mock.calls[0][1]).toMatchObject({ broadcast: true });
+  it('does not misclassify user rejections or unrelated errors', () => {
+    for (const message of [
+      'User rejected the request',
+      'You cancelled the request in Xverse',
+      'Insufficient funds',
+      'Network error',
+    ]) {
+      expect(isWalletSizeLimitError(new Error(message))).toBe(false);
+    }
   });
 });
