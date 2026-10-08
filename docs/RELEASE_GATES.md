@@ -59,6 +59,7 @@ and the final release report.
 | C7 | An exported transaction can be brought back and broadcast without signing again | **PASS** | The import panel requires a fresh per-`txid` acknowledgement and the `SPEND AS BTC` phrase, decodes and re-derives locally, never inherits prior approval, never auto-broadcasts, and shares the broadcast ledger |
 | C8 | A signed transaction survives a page refresh with no user action | **NOT VERIFIED** | Deliberately not implemented — persisting a near-broadcast transaction is the failure mode this project forbids, and the safe design is written up in `docs/PUBLIC_BETA.md`. **A user who did not download the `.hex` before the refresh must sign again** |
 | C9 | Signet/Testnet end-to-end sweep | **NOT VERIFIED** | No inscription-bearing Signet UTXO exists to spend; cannot be demonstrated in this environment |
+| C10 | Recovering an exported transaction is exercised, not just implemented: inspection makes no network request, submission is bound to the exact authorized txid, and repeated recovery submits at most once | **PASS** | `tests/imported-transaction.test.ts` → `describe('recovered transaction safety')` (5 tests): inspection performs zero network calls; broadcast is refused while disabled (0 requests); a mismatched txid fails with `BROADCAST_TXID_MISMATCH` (0 requests); two recoveries of the same bytes submit at most once; the txid is derived deterministically (whitespace/`0x`/case-insensitive inputs agree, a flipped prevout byte does not) |
 
 ## D — Large-wallet acceptance
 
@@ -82,9 +83,10 @@ and the final release report.
 | E5 | Strict CSP and security headers, fail-closed | **PASS** | `next.config.ts`; `script-src`/`style-src 'unsafe-inline'` documented with bounded residual risk |
 | E6 | Signing/broadcast separation is structural, not cosmetic | **PASS** | `broadcast:false` always sent; broadcast layer re-derives txid and re-checks network scoping |
 | E7 | Independent **external** security audit | **NOT VERIFIED** | Internal review only. **Blocks unrestricted public Mainnet launch.** |
-| E8 | A security contact (email/PGP) for vulnerability reports | **FAIL** | No contact exists. `SECURITY.md` documents the intended process and names the missing contact as a release blocker rather than inventing an address |
+| E8 | A private vulnerability-reporting channel for the public repository | **PASS** | GitHub **private vulnerability reporting is enabled and verified** on `echelong/sat-reclaimer` — `GET /repos/echelong/sat-reclaimer/private-vulnerability-reporting` returns `{"enabled":true}` (it was `false` and was enabled during M5). Secret scanning, secret-scanning push protection, Dependabot alerts and Dependabot security updates are also enabled and verified. The repository's *Report a vulnerability* button is the primary intake channel; `SECURITY.md` documents it and the exact report contents |
 | E9 | No high or critical advisory in the dependency tree that ships | **PASS** | The first audit failed on 39 advisories, 34 of them in the shipped tree — all transitively from `sats-connect`, which exact-pins `@sats-connect/core` (→ `axios 1.12.0`) and `valibot 1.1.0`, both of which land in the browser bundle. Fixed with `pnpm.overrides` to `axios 1.20.0` and `valibot 1.5.0`; `pnpm audit --prod --audit-level=high` now reports no known vulnerabilities. Real-wallet behaviour at those versions stays gate B5/B6 |
 | E10 | Every remaining high/critical advisory is explicit, dev-only and unfixable | **PASS** | Exactly one remains: `braces` (GHSA-vfj7-8cjw-p6xm), reachable only from the ESLint glob chain, and 3.0.3 is the newest release with no patched version listed. It is waived by name in `scripts/audit-allowlist.mjs`, which fails the build on any *new* high/critical advisory anywhere in the tree |
+| E11 | A vulnerability-reporting channel that does **not** require a GitHub account (security email or PGP key) | **NOT VERIFIED** | No security email address and no PGP key exist. **Pending owner input** — recorded rather than papered over with an invented address. GitHub private reporting (E8) is enabled and verified, but it is the only channel today and it requires a GitHub account, so a researcher who does not use GitHub has no private way to reach the maintainer |
 
 ## F — Open-source publication
 
@@ -165,29 +167,64 @@ elements extending past the device width.
 | J3 | The user independently approves in Xverse and explicitly broadcasts, paying zero platform fees | **NOT VERIFIED** | Requires a live wallet; no platform fee exists in code or pricing |
 | J4 | The user can verify the TXID and its confirmation | **PASS** | *Check confirmation* action; verified on chain for the confirmed sweep |
 
+## K — Local distribution and installation
+
+The product is distributed by cloning the public repository and running it on the
+user's own machine. There is no hosted site, no account, no subscription, no
+platform fee and no server component. The launcher (`scripts/start-local.mjs`),
+the environment check (`scripts/check-environment.mjs`) and `docs/LOCAL_SETUP.md`
+were added for this milestone; `docs/RELEASE_NOTES_v0.1.0-rc.1.md` is the prepared
+but **unpublished** release candidate.
+
+| # | Requirement | Status | Evidence |
+| --- | --- | --- | --- |
+| K1 | The local server binds to `127.0.0.1` only and is never reachable from the network | **PASS** | `pnpm dev` = `next dev -H 127.0.0.1` and `pnpm start` = `next start -H 127.0.0.1`; `scripts/start-local.mjs` hard-codes `HOST = '127.0.0.1'` and the hostname is deliberately **not** configurable. Both entry points print `Local:` and `Network:` as `http://127.0.0.1:3000` |
+| K2 | The default mode cannot spend anything; Mainnet is off unless deliberately enabled | **PASS** | `scripts/start-local.mjs` default mode is `plan` (`mainnet=false`, both broadcast flags `false`); a non-TTY run with no `--mode` also defaults to `plan` rather than guessing |
+| K3 | Enabling Mainnet broadcasting requires a deliberate, visible act, and is refused otherwise | **PASS** | `--mode=broadcast` exits **2** unless `--confirm-real-btc` is passed (non-interactive) or the phrase `I UNDERSTAND REAL BITCOIN CAN MOVE` is typed (interactive). Verified by exit code; an unknown `--mode` and an unknown flag also exit 2 |
+| K4 | The environment check is read-only and asks for no elevated privileges | **PASS** | `scripts/check-environment.mjs` only reads `process.versions`, `pnpm --version`, `package.json` and the presence of `node_modules`; it installs nothing, downloads nothing and prints the ordinary per-platform package-manager command for the user to run themselves. Verified: `CHECK_EXIT=0`, prints Node 22.23.1 / pnpm 10.17.1 / deps installed / Platform: Linux (x64) |
+| K5 | No installer is fetched from a third party and piped into a shell (`curl` into `bash` or equivalent) | **PASS** | Installation is `git clone` + `corepack enable` + `pnpm install` + `pnpm local`; nothing in the tree pipes a remote script into a shell, and the scripts are plain, inspectable Node.js files in the repository |
+| K6 | Simple and manual installation are both documented, per platform | **PASS** | `docs/LOCAL_SETUP.md` — simple path (`corepack enable`, `pnpm install`, `pnpm local`), manual reproducible path (`pnpm install --frozen-lockfile`), per-platform prerequisite table (Fedora/apt/pacman/brew/winget/corepack), mode table, ports/exposure section and a troubleshooting table |
+| K7 | First run needs no hand-edited `.env.local` | **PASS** | `pnpm local` sets the three product flags itself and prints them before starting; `README.md`, `CONTRIBUTING.md` and `docs/LOCAL_SETUP.md` all lead with `pnpm local`. The console explains the build-time Mainnet lock in-place when Mainnet is off |
+| K8 | Linux (Fedora 43, x86_64) install and local run verified end to end | **PASS** | Cloned, installed, built and served on this machine; `pnpm local:check` exits 0 (Node 22.23.1, pnpm 10.17.1, dependencies installed, Linux x64); `pnpm local` prints mode `Look and plan only`, `mainnet disabled`, `serving development server on http://127.0.0.1:3000` and `reachable 127.0.0.1 only` |
+| K9 | Windows install verified | **NOT VERIFIED** | No Windows environment was available. `scripts/start-local.mjs` handles the `pnpm.cmd` shim (`shell: process.platform === 'win32'`) and the Node scripts avoid shell metacharacters, but that is a code expectation, not a test result. `docs/LOCAL_SETUP.md` and the release notes label it as unverified |
+| K10 | macOS install verified | **NOT VERIFIED** | No macOS environment was available. The toolchain is platform-neutral Node.js (Homebrew/corepack hints are printed by the check), which is an expectation, not a test result |
+| K11 | A versioned release candidate exists and is deliberately not published | **PASS** | `docs/RELEASE_NOTES_v0.1.0-rc.1.md` — source-only (no binaries/installers produced), no tag and no GitHub release, with an explicit "Do not publish yet" section naming the open items. Publishing it is a manual decision that has not been taken |
+
 ---
 
 ## Gate summary
 
-- **PASS with reproducible in-repo evidence:** A1–A10, B1–B4, C1–C7, D1–D6,
-  E1–E6, E9–E10, F1–F10, G1–G6, G8, H1–H8, I1–I7, J1, J4.
+- **PASS with reproducible in-repo evidence:** A1–A10, B1–B4, C1–C7, C10, D1–D6,
+  E1–E6, E8–E10, F1–F10, G1–G6, G8, H1–H8, I1–I7, J1, J4, K1–K8, K11.
 - **No gate is left PENDING, and every gate carries exactly one of the three
   allowed statuses** — PASS, FAIL or NOT VERIFIED — with its evidence attached
   above. No gate is marked N/A or "partial": a requirement that is only partly met
   is split into the part that passes and the part that does not.
-- **FAIL (must be fixed before unrestricted public launch):** E8 (no security
-  contact).
-- **NOT VERIFIED (no evidence available here):** A11, B5, B6, C8, C9, E7, G7, H9,
-  H10, J2, J3.
+- **FAIL (must be fixed before unrestricted public launch):** none. Gate E8 (a
+  private vulnerability-reporting channel) moved from FAIL to PASS in M5: GitHub
+  private vulnerability reporting is enabled and verified on the public
+  repository.
+- **NOT VERIFIED (no evidence available here):** A11, B5, B6, C8, C9, E7, E11,
+  G7, H9, H10, J2, J3, K9, K10.
 
 ### Unrestricted public Mainnet launch is blocked by
 
 1. **A11 / E7** — no independent external security audit.
 2. **B6** — the provider's real PSBT payload limit is unproven for the largest
    wallets.
-3. **E8** — no security contact for vulnerability reports.
+3. **E11** — no security contact **outside GitHub** (email/PGP); **pending owner
+   input**. The GitHub private-reporting channel (E8) is enabled and verified, but
+   it requires the reporter to hold a GitHub account.
 4. **B5 / J2 / J3** — no live-wallet end-to-end acceptance run from this
    environment.
+
+### Local distribution is ready, with two platform gaps recorded
+
+- **K9 (Windows)** and **K10 (macOS)** are **NOT VERIFIED**: no environment was
+  available to install and run the tool on either platform. The install path is
+  ordinary Node.js and the launcher handles the Windows shim, but that is an
+  expectation, not a test result, and `docs/LOCAL_SETUP.md` and the release notes
+  say so plainly rather than claiming support.
 
 The public repository can still ship as an independently useful, inspectable,
 self-buildable artifact while these are open. What must not ship is an

@@ -12,6 +12,12 @@ Use GitHub's private vulnerability reporting: open the repository's **Security**
 tab and choose **Report a vulnerability**. That channel is private, it notifies
 the maintainer directly, and it keeps the report out of public search indexes.
 
+**This channel is enabled and verified on the public repository.**
+`GET /repos/echelong/sat-reclaimer/private-vulnerability-reporting` returns
+`{"enabled":true}`. If you cannot see the *Report a vulnerability* button, you are
+almost certainly not signed in to GitHub — that is the one real limitation of this
+channel, and it is described below.
+
 Please include:
 
 - what the flaw is, and which file or function it lives in
@@ -27,14 +33,36 @@ key material, even if you believe it is already compromised. Redact wallet
 addresses and transaction identifiers unless they are already public on chain and
 relevant to the report.
 
-### No email address is configured
+### Repository security features
 
-There is no security email address, PGP key or bug-bounty programme. GitHub's
-private reporting is the only intake channel, and it requires the reporter to
-hold a GitHub account. This is recorded as an open item in
-[`docs/RELEASE_GATES.md`](docs/RELEASE_GATES.md) rather than papered over with an
-invented address. If you need a different channel, say so in a public issue that
-contains no vulnerability detail, and one will be arranged.
+Verified enabled on `echelong/sat-reclaimer`:
+
+| Feature | Status | Why it matters here |
+| --- | --- | --- |
+| Private vulnerability reporting | **enabled** | The primary intake channel above. |
+| Secret scanning | **enabled** | GitHub watches pushes for known credential formats. |
+| Secret scanning push protection | **enabled** | A commit containing a detected secret is refused before it lands. |
+| Dependabot alerts | **enabled** | Advisories land in the repository's Security tab. |
+| Dependabot security updates | **enabled** | A fix for an advisory arrives as a pull request. |
+
+Two further options — secret scanning for non-provider patterns, and validity
+checks — were attempted and **could not be enabled** through the repository API.
+They are recorded as not applied rather than described as active. The two that
+matter most, scanning and push protection, are on.
+
+### No email address or PGP key — pending owner input
+
+GitHub's private reporting is currently the **only** channel, and it requires the
+reporter to hold a GitHub account. There is no security email address, PGP key or
+bug-bounty programme.
+
+This is a real gap, not a formality: a researcher who does not use GitHub has no
+private way to reach the maintainer. It is recorded as an open item in
+[`docs/RELEASE_GATES.md`](docs/RELEASE_GATES.md) and left **pending owner input**
+rather than papered over with an invented address.
+
+If you need a different channel, open a public issue that contains no
+vulnerability detail and one will be arranged.
 
 ## Response expectations
 
