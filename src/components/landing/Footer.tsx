@@ -25,7 +25,20 @@ export function Footer() {
             <div>
               <h2 className="footer-head mono">Safety</h2>
               <a href="#security">Trust &amp; Security</a>
-              <a href="#problem">Why this exists</a>
+              <Link href="/risk">Risk disclosure</Link>
+              <Link href="/privacy">Privacy</Link>
+              <Link href="/terms">Terms</Link>
+            </div>
+            <div>
+              <h2 className="footer-head mono">Open source</h2>
+              <a
+                href="https://github.com/echelong/sat-reclaimer"
+                target="_blank"
+                rel="noreferrer"
+              >
+                GitHub repository ↗
+              </a>
+              <Link href="/open-source">Source, licence &amp; wallets</Link>
             </div>
           </nav>
         </div>
@@ -40,7 +53,8 @@ export function Footer() {
           </p>
           <p className="footer-fine mono footer-fine-dim">
             An inscription-bearing UTXO is an ordinary Bitcoin UTXO. Spending one can move every asset
-            it carries.
+            it carries. Free software under the MIT licence — read the risk disclosure before you sign
+            anything.
           </p>
         </div>
       </div>
