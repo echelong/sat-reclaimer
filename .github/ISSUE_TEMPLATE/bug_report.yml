@@ -1,0 +1,141 @@
+name: Bug report
+description: Something in the app is broken, wrong, or crashes.
+title: '[bug] '
+labels: ['bug', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Read this before you type anything
+
+        **Never post a seed phrase, recovery words, a private key, a wallet file,
+        or an unredacted screenshot of your wallet.** Nobody maintaining this
+        project will ever ask for those, and any post containing them will be
+        deleted unread. If you have already posted one, treat the wallet as
+        compromised immediately and move the funds with a wallet you trust.
+
+        Anything **exploitable** — a way to sign, verify or broadcast something
+        other than what the user reviewed — must not be filed here. Use GitHub's
+        private reporting instead: **Security** tab → **Report a vulnerability**.
+        See [SECURITY.md](../blob/master/SECURITY.md).
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety acknowledgement
+      options:
+        - label: This report contains no seed phrase, private key, wallet file, or other key material.
+          required: true
+        - label: This is not a security vulnerability. (Vulnerabilities go to the private reporting channel.)
+          required: true
+
+  - type: dropdown
+    id: network
+    attributes:
+      label: Network
+      description: Which network were you on? Mainnet moves real bitcoin; please do not reproduce a Mainnet bug with real funds.
+      options:
+        - Mainnet
+        - Testnet
+        - Signet
+        - Not connected to a wallet
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: flags
+    attributes:
+      label: Which feature flags were set
+      description: 'The values of NEXT_PUBLIC_ENABLE_MAINNET, NEXT_PUBLIC_ENABLE_SIGNET_BROADCAST and NEXT_PUBLIC_ENABLE_MAINNET_BROADCAST in your .env.local. These are public configuration values, not secrets.'
+      placeholder: 'NEXT_PUBLIC_ENABLE_MAINNET=false, the other two unset'
+    validations:
+      required: true
+
+  - type: input
+    id: wallet
+    attributes:
+      label: Wallet and version
+      description: Which wallet, which version, and whether it is a browser extension or the in-app browser.
+      placeholder: 'Xverse 1.2.3 extension on Chrome 141'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Chrome / Chromium
+        - Brave
+        - Firefox
+        - Edge
+        - Safari
+        - Xverse in-app browser
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: step
+    attributes:
+      label: Where in the flow did it break?
+      options:
+        - Connect wallet
+        - Scan inscriptions
+        - Select UTXOs
+        - Enter destination / fee rate
+        - Build (Sweep All)
+        - Sign in the wallet
+        - Verification of the signed PSBT
+        - Broadcast
+        - Confirmation check
+        - Import a saved transaction
+        - Landing page or other UI
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: Copy the exact message. The console prefixes its own refusals with a bracketed error code such as `[SCAN_INCOMPLETE]` or `[ACCOUNTING_MISMATCH]`; that code is the most useful thing in this report.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. …
+        2. …
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console output and screenshots
+      description: 'Browser console output, and screenshots with every wallet address and transaction id redacted. A redacted txid is fine; a redacted seed phrase should not exist.'
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: commit
+    attributes:
+      label: Version
+      description: The commit you are on (`git rev-parse --short HEAD`) or the deployed version.
+      placeholder: '766bfe8'
+    validations:
+      required: true

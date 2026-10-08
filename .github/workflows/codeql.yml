@@ -1,0 +1,56 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    # Weekly, so a newly published query finds old code too.
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      # Needed to upload results to the code scanning dashboard. The job needs
+      # no write access to the repository itself.
+      security-events: write
+
+    steps:
+      # actions/checkout v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      # github/codeql-action/init v3.28.0
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169
+        with:
+          languages: javascript-typescript
+          # security-and-quality adds correctness and maintainability queries on
+          # top of the default security suite. Findings are reviewed, not merged
+          # away with a suppression.
+          queries: security-and-quality
+
+      # github/codeql-action/autobuild v3.28.0
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169
+
+      # github/codeql-action/analyze v3.28.0
+      - name: Analyze
+        uses: github/codeql-action/analyze@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169
+        with:
+          category: /language:javascript-typescript

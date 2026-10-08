@@ -4,6 +4,13 @@ This document covers what must be true before Sat Reclaimer is announced, and th
 one architectural weakness the redesign surfaced. It is deliberately blunt: a
 real-money Bitcoin tool loses trust the first time it overstates itself.
 
+> [`docs/RELEASE_GATES.md`](RELEASE_GATES.md) is the single source of truth for
+> what is proven and what is not. This document is the narrative behind the open
+> items; that one carries the PASS / FAIL / NOT VERIFIED status and the evidence.
+> The **repository** is public under MIT. The **website** is not deployed for
+> public users, and unrestricted Mainnet reclaim stays blocked while gates A11
+> (external audit), B6 (provider payload limit) and E8 (security contact) are open.
+
 ## Open issue — a signed transaction lives only in browser memory
 
 **What happens.** After Xverse signs a batch, the signed PSBT is verified and the
@@ -82,17 +89,20 @@ Ordered by what would actually hurt a user.
 
 | # | Blocker | Why it matters | Where |
 | --- | --- | --- | --- |
-| 1 | **No live signed sweep has been demonstrated end to end.** | Every signature-verification test uses a deterministic test key. Xverse's real PSBT payload limit and real behaviour on a 1,000+ input sweep are unexercised. | `docs/ARCHITECTURE.md` milestone M2 |
+| 1 | **Live wallet behaviour at scale is still unexercised from this repository.** | A real 1,079-input sweep **is** confirmed on chain (block 970454), which proves the flow end to end from the operator's side. What no in-repo test can prove is what Xverse's own request-size limit will accept for a multi-thousand-input sweep — local signing with a deterministic key does not exercise the provider. Recorded as gate B5/B6. | [`docs/RELEASE_GATES.md`](RELEASE_GATES.md), [`docs/PERFORMANCE.md`](PERFORMANCE.md) |
 | 2 | **`NEXT_PUBLIC_SITE_URL` is unset.** | Canonical URLs, `og:url` and `sitemap.xml` fall back to `http://localhost:3000`. Social cards and search results would point at localhost. | `app/layout.tsx`, `app/sitemap.ts`, `app/robots.ts` |
-| 3 | **No independent security review.** | The landing page states this plainly under "Not audited"; it must stay stated until an audit exists. | `SECURITY.md`, Trust section |
+| 3 | **No independent security review.** | The landing page states this plainly under "Not audited"; it must stay stated until an audit exists. An internal review exists and is worth reading, but it is not an external one. | `SECURITY.md`, [`docs/SECURITY_REVIEW.md`](SECURITY_REVIEW.md), Trust section |
 | 4 | **Broadcast endpoints are third-party public nodes.** | mempool.space and blockstream.info see the raw transaction before/alongside the network. Behaviour under rate limiting and outage is handled but untested against the live services. | `src/lib/broadcast.ts` |
 | 5 | **Signet/Testnet proof of concept is still not demonstrated.** | No inscription-bearing Signet UTXO exists to sweep, so the non-Mainnet path has never run against a real chain. | `CLAUDE.md`, milestone M1 |
 | 6 | **Supported-wallet coverage is Xverse only.** | Users on other wallets get a clear message, but there is no second signer to fall back to. | `src/lib/xverse.ts` |
-| 7 | **Mainnet flags are enabled in `.env.local` on this machine.** | Correct for the operator's own testing, wrong for anything public. A public deployment must ship with all three flags `false` unless deliberately enabled. | `.env.example` |
+| 7 | **Mainnet flags are enabled in `.env.local` on this machine.** | Correct for the operator's own testing, wrong for anything public. A public deployment must ship with all three flags `false` unless deliberately enabled. This was verified to work: a build with the flags forced to `false` in the environment overrides `.env.local`, and the prerendered console then reads `Mainnet (locked in code)` with no Mainnet banner anywhere. | `.env.example`, CI job `verify` |
+| 8 | **No security contact exists.** | `SECURITY.md` documents the intended process and names the missing contact as a release blocker rather than inventing an address. A public project needs a channel that is not a public issue. | `SECURITY.md`, gate E8 |
 
 ## Do not do these
 
-- Do not announce, deploy, or publish.
+- Do not deploy a publicly reachable Mainnet-broadcast-enabled site while gates
+  A11, B6 and E8 are open. Publishing the repository is exactly what we want;
+  publishing an unrestricted real-BTC interface is not.
 - Do not describe the product as audited, certified, verified, or risk-free.
 - Do not claim a previously broadcast transaction confirmed without checking its
   on-chain status on independent nodes.

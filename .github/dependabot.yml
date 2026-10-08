@@ -1,0 +1,57 @@
+version: 2
+updates:
+  # Runtime and development dependencies. This is a Bitcoin transaction tool, so a
+  # dependency bump is a code change: it goes through review and through the full
+  # test suite, never merged automatically.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: UTC
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+    labels:
+      - dependencies
+    commit-message:
+      prefix: 'deps'
+      include: scope
+    groups:
+      # The Bitcoin and cryptography libraries move together and must be reviewed
+      # together: a mismatch between @noble, @scure and @scure/btc-signer is a
+      # transaction-correctness risk, not a routine bump.
+      bitcoin:
+        patterns:
+          - '@noble/*'
+          - '@scure/*'
+          - 'sats-connect'
+      react:
+        patterns:
+          - 'react'
+          - 'react-dom'
+          - '@types/react'
+          - '@types/react-dom'
+      tooling:
+        patterns:
+          - 'eslint*'
+          - 'typescript'
+          - 'vitest'
+          - '@types/node'
+
+  # Workflows pin actions to commit SHAs. Dependabot is the mechanism that keeps
+  # those pins moving, because a pinned SHA never updates itself.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: 'ci'
+      include: scope

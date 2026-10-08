@@ -1,95 +1,123 @@
-# Sat Reclaimer
+# SAT//RECLAIMER
 
-Non-custodial web app for deliberately spending the bitcoin locked inside
-inscription-bearing Taproot UTXOs.
+**FREE SOFTWARE. NO PLATFORM FEES. BITCOIN NETWORK FEES STILL APPLY.**
 
-## Core rule
-
-The app never asks for, derives, stores, transmits or logs a seed phrase or
-private key. It connects to Xverse through Sats Connect, enumerates inscription
-UTXOs, builds a PSBT, asks the wallet to sign specific Taproot inputs, and then
-verifies the signed result locally before anything else can happen.
+A free, open-source, non-custodial web app for deliberately spending the bitcoin
+locked inside inscription-bearing Taproot (P2TR / BIP86) UTXOs and sweeping it to
+one destination address you choose. Your wallet signs; this app never holds a key,
+never takes custody, and never broadcasts anything you have not authorized one
+exact transaction at a time.
 
 An inscription-bearing UTXO is still a Bitcoin UTXO. This app does not delete
-inscriptions, convert Ordinals into Bitcoin, or take custody. It lets the owner
-opt selected `bc1p` outputs back into ordinary coin selection after an explicit
-destructive-asset acknowledgement.
+inscriptions, convert Ordinals into Bitcoin, or take custody of anything. It lets
+an owner opt selected `bc1p` outputs back into ordinary coin selection after an
+explicit destructive-asset acknowledgement — and it is honest about what that
+does and does not do.
 
-## Product surface
+- **[Risk disclosure](docs/RISK.md)** — read this before Mainnet.
+- **[Release gates](docs/RELEASE_GATES.md)** — exactly what is proven and what is not.
+- **License:** [MIT](LICENSE)
 
-| Route | What it is |
+![The SAT//RECLAIMER landing page](docs/screenshots/landing.png)
+
+![The reclaim console at /app](docs/screenshots/console.png)
+
+## What it is
+
+Bitcoin wallets protect ordinal-bearing UTXOs from ordinary coin selection, which
+is why thousands of small inscription outputs sit unspendable-looking in a wallet.
+Reclaiming them means opting out of that protection on purpose and paying the
+Bitcoin network fee to consolidate the sats that are actually there. Most of those
+outputs hold a few hundred sats, so this is often a decision about postage value
+rather than a windfall — the app shows you the arithmetic before you sign.
+
+## Features
+
+- **One-click Sweep All.** Scan the whole wallet, select everything, preview fees,
+  sign, verify, broadcast. No bulk checkbox clicking and no manual repartitioning.
+- **Sized by measurement, not by a formula.** The planner builds the candidate
+  transaction, injects key-free placeholder signatures of the exact size Xverse
+  returns, finalizes it, and reads the real relay weight from the serialized
+  artifact. 1,083 inputs fit in one transaction; larger wallets split into the
+  minimum number of batches automatically.
+- **Independent verification.** The signed PSBT is decoded by code that shares no
+  state with the builder, and every input's BIP341 sighash and Schnorr signature is
+  re-checked locally before anything else can happen.
+- **Signing and broadcasting are separate actions.** Signing is sent with
+  `broadcast: false`. Broadcasting needs its own operator flag, a per-`txid`
+  authorization, and it submits the verified raw bytes to independent public nodes
+  — never to the wallet.
+- **No automatic anything.** No auto-broadcast, no resubmission after an ambiguous
+  response, no signed replacement, no "resume and submit" from storage.
+- **Zero platform fees.** There is no fee, percentage, tier, account or upsell in
+  the code or the product.
+
+## Supported wallet and networks
+
+| | |
 | --- | --- |
-| `/` | Public landing page: hero with an animated UTXO→consolidation visualisation, the four-step workflow, a fully simulated interactive demo, the problem statement, the trust and security posture, and a 13-question FAQ |
-| `/app` | The working reclaim console (moved here from `/`) |
+| Wallet | **Xverse**, via Sats Connect (`sats-connect@4.2.1`). Only Xverse is supported today. |
+| Networks | Signet/Testnet and Mainnet. **Mainnet is off by default** and requires an explicit operator flag. |
+| Browser | Any current Chromium/Firefox/Safari with the Xverse extension installed. |
 
-`/` is what people arriving from a shared screenshot see first, so it explains the
-product and its limits before asking anyone to connect a wallet. The console is
-unchanged where it counts: same wallet, PSBT, signing, verification and broadcast
-code, same opt-in gates, same destructive acknowledgement.
+### Network behaviour
 
-The visual language is one system shared by both routes — see
-[`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md). Styling is plain CSS
-(`app/globals.css`, `app/landing.css`, `app/console.css`); there is no CSS
-framework and no animation dependency.
+Mainnet and the test networks behave identically in the workflow, with different
+defaults:
 
-## Milestone status
+- **Mainnet is never a default.** `NEXT_PUBLIC_ENABLE_MAINNET=true` is an explicit
+  operator decision. With it off, the console refuses the Mainnet workflow rather
+  than quietly building a real-BTC transaction.
+- **Mainnet broadcasting needs a second flag.**
+  `NEXT_PUBLIC_ENABLE_MAINNET_BROADCAST=true` on top of Mainnet. Enabling Mainnet
+  for building never moves real BTC by itself.
+- **Signet/Testnet broadcasting** has its own flag
+  (`NEXT_PUBLIC_ENABLE_SIGNET_BROADCAST=true`) and can never unlock Mainnet.
+- A build must be correct with all three flags `false`; that is what CI builds.
 
-**M0 complete. M1 (signer compatibility proof) is implemented and verified
-locally. The operator has enabled Mainnet for the Sweep All workflow.**
+## How Bitcoin mining fees work here
 
-| Area | Status |
-| --- | --- |
-| Wallet connection (`wallet_connect`) | Implemented against sats-connect 4.2.1, verified in a browser without a provider installed |
-| Ordinals address + Taproot proof | Address is checked to be the BIP86 output of the reported public key before anything is built |
-| Inscription pagination | Implemented with page/row/duplicate rails |
-| Outpoint deduplication | Implemented, plus duplicate inscription ids, postage conflicts and foreign addresses |
-| Exact accounting | `sum(inputs) = sum(outputs) + fee`, re-derived from the serialized PSBT |
-| P2TR PSBT construction | `@scure/btc-signer` 2.4.1, one output, exact vsize x fee-rate fee |
-| Batching | Input cap + 400,000 WU weight budget; a 901-UTXO wallet splits into 5 buildable batches |
-| Local signed-PSBT verification | Independent decode + BIP341 sighash + Schnorr verification of every input |
-| Mainnet | Off by default; operator-enabled Sweep All (`NEXT_PUBLIC_ENABLE_MAINNET`) |
-| Broadcast | Manual, disabled by default; Mainnet requires a second opt-in (`NEXT_PUBLIC_ENABLE_MAINNET_BROADCAST`) and submits the verified raw transaction to independent public nodes |
-| Live Xverse signature | **Not yet demonstrated — requires a wallet approval** |
+This project charges nothing. The only cost is the Bitcoin network fee, which is
+paid to miners, not to anyone involved with this app.
 
-The local signing ladder (1/10/50/100/200/500 inputs) is exercised in tests with
-a deterministic test key, not with Xverse. See `tests/psbt.test.ts`.
+The fee is `vsize × fee rate`. Each Taproot input costs about 230 weight units
+(~57–58 vB) to spend, so a sweep of 1,000 inputs is roughly 62,000 vB: at
+1 sat/vB that is about 62,000 sats of fee. Because most inscription outputs hold a
+few hundred sats, a high fee rate can consume most of the value. So:
 
-## Run
+- the app fixes the fee from the **measured** final transaction, never an estimate
+  that can drift;
+- it shows the exact fee, the exact destination output, and the fee as a
+  percentage of recovered value before you sign;
+- it warns prominently above 25%;
+- it evaluates the whole selected set together, so 1,083 small UTXOs can be a valid
+  sweep even when any one of them alone would not be;
+- net recovery is `inputs − mining fee`, never the gross input total.
+
+## Run it locally
+
+Requires Node 22+ and pnpm 10 (`corepack enable` will pick up the pinned
+`packageManager`).
 
 ```bash
 pnpm install
-pnpm dev        # http://localhost:3000  → landing
-                # http://localhost:3000/app → reclaim console
-pnpm lint && pnpm typecheck && pnpm test && pnpm build
+pnpm dev     # http://localhost:3000      landing page
+             # http://localhost:3000/app  the reclaim console
 ```
-
-Set `NEXT_PUBLIC_SITE_URL` to the real origin before any public deployment; it is
-what canonical URLs, `og:url` and `sitemap.xml` are built from. Without it they
-fall back to `http://localhost:3000`.
-
-### Social preview image
-
-`public/og.png` (1200×630) is generated from `scripts/social-preview.html`, a
-standalone card kept out of the app so the composition is exactly the right size
-with no half-finished entry animation:
 
 ```bash
-chromium-browser --headless=new --no-sandbox --disable-gpu --hide-scrollbars \
-  --force-device-scale-factor=1 --window-size=1200,630 --virtual-time-budget=6000 \
-  --screenshot=public/og.png "file://$PWD/scripts/social-preview.html"
+pnpm lint         # eslint
+pnpm typecheck    # tsc --noEmit
+pnpm test         # full offline suite (no network, no Mainnet)
+pnpm build        # production build
+pnpm verify       # lint + typecheck + test + build
+pnpm test:max     # 10,000-UTXO scale run; see docs/PERFORMANCE.md
 ```
 
-The card's headline is sized to measure ~820 px against a 1048 px column, so it
-stays on one line; widening the type or narrowing the column wraps it and breaks
-the strike-through placement.
+### Environment
 
-`pnpm test` runs the full offline suite: 199 tests, no network access, no
-mainnet dependency. The broadcast tests use a fake transport, so no live
-endpoint is ever contacted.
-
-## Configuration
-
-Both flags are off unless set to exactly `true`.
+Copy `.env.example` to `.env.local`. Every flag is off unless set to exactly
+`true`.
 
 ```bash
 NEXT_PUBLIC_ENABLE_MAINNET=false
@@ -97,94 +125,175 @@ NEXT_PUBLIC_ENABLE_SIGNET_BROADCAST=false
 NEXT_PUBLIC_ENABLE_MAINNET_BROADCAST=false
 ```
 
-Mainnet broadcasting needs both Mainnet flags. The Signet/Testnet flag can never
-unlock Mainnet.
+`NEXT_PUBLIC_SITE_URL` sets the origin that canonical URLs, `og:url` and
+`sitemap.xml` are built from; without it they fall back to
+`http://localhost:3000`. For a local Mainnet rehearsal:
 
 ```bash
 NEXT_PUBLIC_ENABLE_MAINNET=true NEXT_PUBLIC_ENABLE_MAINNET_BROADCAST=true pnpm dev
 ```
 
-## Sweep All
+`NEXT_PUBLIC_*` values are **public browser configuration, not secrets and not an
+authorization boundary.** The controls a user sees are UI state; the broadcast
+layer re-checks the flags and the per-transaction authorization in code and
+refuses regardless of what the UI believes. Never put a key or a credential in a
+`NEXT_PUBLIC_*` variable.
 
-One workflow retrieves and sweeps an entire wallet:
+## Workflow
+
+Connect Xverse → Scan wallet → acknowledge the destructive warning → select UTXOs
+→ enter a destination address and fee rate → **Build** unsigned PSBTs → **Sign**
+with Xverse → the app **verifies** the signed PSBT → review the exact verified
+transaction → authorize that `txid` → **Broadcast** to independent nodes →
+**Check confirmation**.
+
+`Build`, `Sign`, `Verify` and `Broadcast` are four separate actions. Nothing is
+fused into one opaque button, and signing never broadcasts.
+
+### Sweep All
 
 1. **Scan the whole wallet.** Pages are fetched until the indexer total is
    exhausted or the provider returns an empty page. The app reports the
-   indexer-reported total, inscriptions retrieved, unique UTXOs, total sats,
-   pages read and duplicates skipped, and it refuses to sweep an incomplete scan.
-2. **Sweep All.** Every retrieved UTXO goes into the sweep — no manual
-   repartitioning and no bulk checkbox clicking.
-3. **Sized by measurement.** The planner attempts the whole selection as one
-   transaction, injects key-free placeholder signatures of the exact size Xverse
-   returns, finalizes it, and reads the real relay weight from the serialized
-   artifact. 1,083 × 10,000-sat inputs measure 249,312 WU (62,328 vB) and fit in
-   **one** transaction.
+   indexer-reported total, inscriptions retrieved, unique UTXOs, total sats, pages
+   read and duplicates skipped, and it refuses to sweep an incomplete scan.
+2. **Sweep All.** Every retrieved UTXO goes into the sweep.
+3. **Sized by measurement.** 1,083 × 10,000-sat inputs measure 249,312 WU
+   (62,328 vB) and fit in **one** transaction. Anything that cannot fit is split
+   into the minimum number of batches, presented as Batch 1…N.
 4. **One-click fallback.** If Xverse rejects a large payload, the app classifies
-   the rejection and re-plans the same wallet into the minimum number of batches,
-   presented as Batch 1…N. No validation is relaxed to make a rejection pass.
-5. **Aggregate fee economics.** The fee check evaluates the whole selected set,
-   so 1,083 small UTXOs are a valid sweep even when any one of them alone is not.
+   the rejection and re-plans the same wallet into more batches. No validation is
+   relaxed to make a rejection pass.
+5. **Aggregate fee economics.** The fee check evaluates the whole selected set.
 
-### Mainnet
+### Interrupted sessions and imports
 
-Mainnet is never a default. Setting `NEXT_PUBLIC_ENABLE_MAINNET=true` enables the
-same Sweep All workflow on Mainnet, with `MAINNET — REAL BTC` shown throughout, an
-extra Mainnet-only destructive acknowledgement, destination validation on
-Mainnet, exact fee accounting, and independent verification of every signed PSBT.
+A signed transaction lives in browser memory only, so a refresh discards it — the
+reasons, and the safe design for persisting it, are written up in
+[docs/PUBLIC_BETA.md](docs/PUBLIC_BETA.md). The console can save the verified raw
+transaction as a `.hex` file, and a raw transaction is public network data with no
+key material in it.
 
-Broadcasting is a separate, manual step. `NEXT_PUBLIC_ENABLE_SIGNET_BROADCAST=true`
-enables it on Signet/Testnet; Mainnet additionally requires
-`NEXT_PUBLIC_ENABLE_MAINNET_BROADCAST=true`, so enabling Mainnet for building
-never moves real BTC by itself. Once a batch verifies, the app shows the final
-review (input count, input sats, destination, output sats, mining fee, fee %,
-vsize, txid), requires a per-transaction authorization for that exact txid, and
-only then submits the raw bytes to independent public Bitcoin nodes
-(mempool.space, then blockstream.info). Xverse is never asked to broadcast.
+An imported raw transaction **never** inherits a previous approval: it gets a fresh
+per-`txid` acknowledgement, it is decoded and re-derived locally, it never
+auto-broadcasts, and where the original approval evidence is absent the app reports
+which fields it cannot verify instead of assuming them.
 
-A returned txid that does not match the locally computed one is treated as a
-failure, not a success. A submission that times out is resolved by looking the
-txid up on the same independent nodes — never by resubmitting. After a
-submission, **Check confirmation** asks the same independent nodes whether the
-txid is in a mempool or in a block, and reports the block height when known. The
-app never rebroadcasts automatically and never signs a replacement.
+## Security posture
 
-## Flow
+- **No keys, ever.** No page has a field for a seed phrase or private key, and no
+  code path can obtain one. The app never asks for, derives, stores, transmits or
+  logs one.
+- **The address is proven.** The Ordinals address is checked to be the BIP86 output
+  of the public key the wallet reported, or the flow stops.
+- **Indexer responses are untrusted input.** Rows with malformed outpoints, invalid
+  postage, foreign addresses or conflicting postage for one outpoint are quarantined
+  rather than silently swept, and inputs are deduplicated by `txid:vout`.
+- **Conservation is enforced** on the serialized artifact: `Σinputs = Σoutputs + fee`.
+- **Asset detection is structurally incomplete.** The Sats Connect inscriptions API
+  cannot report runes, BRC-20 balances or rare sats. The app therefore never claims
+  an output is "safe" and never infers safety from an inscription count.
+- **Strict CSP and headers.** `default-src 'none'`, `frame-ancestors 'none'`,
+  `connect-src` limited to the public broadcast hosts this app actually uses. See
+  [`next.config.ts`](next.config.ts).
+- **Not audited.** No independent external security review has been performed. The
+  internal review, its findings and its scope limits are in
+  [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md); the gate that stays open
+  because of it is in [docs/RELEASE_GATES.md](docs/RELEASE_GATES.md).
 
-Connect Xverse → Scan wallet → acknowledge the destructive warning → select
-UTXOs → enter a destination address and fee rate → **Build** unsigned PSBTs →
-**Sign** with Xverse → the app **verifies** the signed PSBT → review the exact
-verified transaction → authorize that txid → **Broadcast** to independent nodes.
-
-`Build`, `Sign`, `Verify` and `Broadcast` are separate actions. Nothing is
-combined into one opaque button, and signing never broadcasts.
+**The inscription is not erased.** Its contents stay on chain at the genesis
+location forever; what changes is which output carries it and who controls that
+output. Spending an inscription output can move or permanently affect whatever it
+carries, including rare sat ranges, rune balances and BRC-20 state. Bitcoin
+transfers are irreversible and there is no support process, no refund and no
+recovery path.
 
 ## Trust model
 
 1. Xverse exposes the Ordinals P2TR address and its public key.
 2. The app proves the address is that key's BIP86 output, or refuses to continue.
-3. `ord_getInscriptions` enumerates inscriptions; every row is treated as
-   untrusted input and validated.
-4. Rows are reduced to a unique `txid:vout` set. Multiple inscriptions sharing
-   one output are counted once.
-5. The PSBT is built, then re-decoded from its serialized form; every number the
+3. `ord_getInscriptions` enumerates inscriptions; every row is validated as
+   untrusted input.
+4. Rows are reduced to a unique `txid:vout` set. Multiple inscriptions sharing one
+   output are counted once.
+5. The PSBT is built and then re-decoded from its serialized form; every number the
    user sees comes from that decode.
 6. Xverse signs exactly the listed input indexes with `broadcast: false`.
-7. The returned PSBT is decoded again and checked against the plan: inputs,
-   prevout values, input scripts, single output, destination script, amount, fee,
-   conservation, txid, and a Schnorr signature verification per input.
+7. The returned PSBT is decoded again and checked against the plan: inputs, prevout
+   values, input scripts, single output, destination script, amount, fee,
+   conservation, txid stability, and a Schnorr signature verification per input.
 8. Broadcasting is a separate action behind two explicit operator flags and a
-   per-transaction authorization. The verified raw bytes are re-hashed locally
-   and POSTed to independent public nodes; the wallet never broadcasts, a
-   mismatched returned txid aborts the flow, and an ambiguous response is
-   resolved by a txid lookup rather than a resubmission.
+   per-transaction authorization. The verified raw bytes are re-hashed locally and
+   POSTed to independent public nodes; the wallet never broadcasts, a mismatched
+   returned txid aborts the flow, and an ambiguous response is resolved by a txid
+   lookup rather than a resubmission.
 
-## Asset warning
+Import direction is one-way: the presentation layer (landing page, hero,
+simulated demo) imports nothing from the Bitcoin engine, so the demo cannot sign
+or broadcast by construction rather than by discipline.
 
-**Asset detection is not exhaustive.** The Sats Connect inscriptions API cannot
-detect runes, BRC-20 balances or rare sats, so the app never claims any output is
-safe and never infers safety from an inscription count. Spending an
-inscription-bearing output can move or permanently affect everything it carries.
-The user must explicitly acknowledge that before UTXOs become selectable.
+## Third-party services
+
+There is no account, no analytics, no tracker and no server-side storage of wallet
+data. Requests leave your browser to exactly these hosts:
+
+| Service | What it receives | Why |
+| --- | --- | --- |
+| Xverse (wallet extension) | Your addresses and the signing request | It is your wallet |
+| Ordinals indexer (via Sats Connect) | Your Ordinals address | To enumerate inscriptions |
+| `mempool.space`, `blockstream.info`, `mempool.emzy.de` | The raw transaction, or a `txid` lookup | Public broadcast and status endpoints you explicitly authorize |
+
+See [`/privacy`](app/privacy/page.tsx) and [`docs/RISK.md`](docs/RISK.md).
+
+## Known limitations
+
+- **Xverse only.** No second signer to fall back to.
+- **Asset detection is incomplete.** Runes, BRC-20 and rare sats are invisible to
+  the API this app can read.
+- **The provider's real payload limit is unproven.** Synthetic signing up to 10,000
+  inputs is measured
+  ([docs/PERFORMANCE.md](docs/PERFORMANCE.md)), but the largest input count approved
+  by a real wallet is 1,079. A very large sweep may need several signature requests.
+- **No external security audit.**
+- **No live Signet end-to-end run** — there is no inscription-bearing Signet UTXO
+  to spend.
+- **A refreshed tab loses an unsigned batch.** Mitigated by *Download verified
+  .hex*; automatic recovery is deliberately not implemented.
+- **Broadcast endpoints are third parties.** They see the transaction, as any node
+  would; behaviour under rate limiting and outage is handled but not exhaustively
+  tested against live services.
+- **Single-network destination.** The destination must be valid on the same network
+  as the inputs; the app never converts between networks.
+
+## The confirmed Mainnet sweep
+
+The operator swept a real 1,079-input inscription wallet on Mainnet:
+
+| | |
+| --- | --- |
+| txid | `0a7d30ca8f940b137c96c65bb32ffec34f53a8a128cadf154f8df83055257e1a` |
+| block | 970454 |
+| weight / vsize | 248,348 WU / 62,087 vB |
+| fee | 62,087 sats at exactly 1 sat/vB |
+| inputs / outputs | 1,079 key-path P2TR inputs → one P2SH output of 539,127 sats |
+
+Every number was independently re-derived from the raw bytes, and the analytic
+weight model matched the chain to the byte. What that does and does not prove is
+written out in [docs/MAINNET_ACCEPTANCE.md](docs/MAINNET_ACCEPTANCE.md).
+
+## Contributing
+
+Contributions are welcome — especially adversarial review of the transaction path.
+Start with [CONTRIBUTING.md](CONTRIBUTING.md), and read the Bitcoin-safety impact
+table in the pull-request template before proposing a change to anything that
+touches inputs, outputs, fees, signing or broadcasting.
+
+Security issues should not be filed as public issues; see [SECURITY.md](SECURITY.md).
+Participation is covered by the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+[MIT](LICENSE) © 2026 echelong. Bundled and transitively required third-party
+licences are listed in [LICENSE](LICENSE).
 
 ## API notes (verified against the installed packages)
 
@@ -201,41 +310,13 @@ declarations rather than examples found online:
 - `signPsbt` takes `{ psbt, signInputs: { [address]: number[] }, broadcast }` and
   returns `{ psbt, txid? }`. There is no `finalize` option in this version.
 - `wallet_disconnect` takes `null | undefined`.
-- `selectUTXO(..., 'all', ...)` is the exact fee/vsize estimator used for
-  building. Its weight for a one-output P2TR sweep matches the signed transaction
-  exactly, and a 500-input batch is 115,214 WU against a 400,000 WU limit.
-- If the remainder after fees is below the dust/relay threshold the estimator
-  emits **zero outputs and burns the whole batch as fee**. The builder detects
-  that and refuses instead.
+- `selectUTXO(..., 'all', ...)` is the exact fee/vsize estimator used for building.
+  Its weight for a one-output P2TR sweep matches the signed transaction exactly, and
+  a 500-input batch is 115,214 WU against a 400,000 WU limit.
+- If the remainder after fees is below the dust/relay threshold the estimator emits
+  **zero outputs and burns the whole batch as fee**. The builder detects that and
+  refuses instead.
 
-## Tooling
-
-Node 22, `pnpm@10.17.1`. `@noble/curves` and `@noble/hashes` are direct
-dependencies (same versions `@scure/btc-signer` already pins) so the verifier can
-compute its own BIP341 sighash and check Schnorr signatures.
-
-## Before mainnet
-
-The operator enabled Mainnet deliberately for the Sweep All workflow (a recorded
-policy decision). Broadcasting real BTC is behind a second, separate operator
-flag and a per-transaction authorization, and it has not yet been exercised
-against a live wallet or a live broadcast endpoint. Independent Bitcoin security
-review is still outstanding.
-
-## Public beta
-
-Before this is announced:
-
-- **Do not describe it as audited, certified or risk-free.** The landing page says
-  "Not audited" under Trust & Security and names what the app cannot verify.
-- **Never present gross input sats as recovered bitcoin.** Net output is
-  `inputs − mining fee`, and the demo shows that arithmetic explicitly.
-- **Do not claim a broadcast confirmed** without checking its on-chain status on
-  independent nodes.
-- A signed transaction lives in browser memory only, so a refresh discards it. The
-  console offers *Download verified .hex* (a raw transaction is public network
-  data and contains no key material), and the proposed persistent recovery design
-  is written up — but not implemented — in
-  [`docs/PUBLIC_BETA.md`](docs/PUBLIC_BETA.md).
-
-`docs/PUBLIC_BETA.md` also carries the ordered list of remaining launch blockers.
+`@noble/curves` and `@noble/hashes` are direct dependencies (the same versions
+`@scure/btc-signer` already pins) so the verifier can compute its own BIP341 sighash
+and check Schnorr signatures without trusting the builder's library call.

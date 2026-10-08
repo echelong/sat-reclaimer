@@ -1,0 +1,20 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability (private)
+    url: https://github.com/echelong/sat-reclaimer/security/advisories/new
+    about: >-
+      Anything exploitable goes here, not in a public issue: a way to sign or
+      broadcast something other than what the user reviewed, a bypass of a
+      verification or authorization gate, or any exposure of key material.
+      Never post a seed phrase or private key anywhere, including here.
+  - name: Read the risk disclosure first
+    url: https://github.com/echelong/sat-reclaimer/blob/master/docs/RISK.md
+    about: >-
+      Spending an inscription output is destructive and irreversible, asset
+      detection is incomplete, and this software has not been audited. Most
+      "is this safe?" questions are answered here.
+  - name: Read the architecture and the hard rules
+    url: https://github.com/echelong/sat-reclaimer/blob/master/docs/ARCHITECTURE.md
+    about: >-
+      The trust model, the non-goals, and why signing and broadcasting are
+      deliberately separate operations.

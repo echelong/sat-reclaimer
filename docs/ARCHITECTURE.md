@@ -39,12 +39,15 @@ No seed phrase or private key enters the application.
 | `src/lib/types.ts` | Domain types, decoded transaction types, verification report types |
 | `src/lib/bitcoin.ts` | Networks, mainnet/broadcast gates, address validation, BIP86 Taproot derivation and the address/key proof, consensus limits, weight arithmetic |
 | `src/lib/sighash.ts` | Independent BIP341 key-path sighash (DEFAULT/ALL), with the midstate computed once per transaction |
-| `src/lib/ordinals.ts` | Outpoint parsing, untrusted-row validation, global deduplication and quarantine, full-wallet pagination with a completeness flag, weight-aware batching, asset classification |
-| `src/lib/psbt.ts` | PSBT construction, exact accounting, measured-size sweep planning with wallet-limit fallback, sign-input index derivation, decoded re-check of its own output |
+| `src/lib/ordinals.ts` | Outpoint parsing, untrusted-row validation, global deduplication and quarantine (including conflicting postage for one outpoint and a case-insensitive address compare), full-wallet pagination with a completeness flag, weight-aware batching, asset classification |
+| `src/lib/psbt.ts` | PSBT construction, exact accounting, measured-size sweep planning with wallet-limit fallback, sign-input index derivation, decoded re-check of its own output, dust and minimum-fee assertions |
 | `src/lib/verify.ts` | Decoder independent of the builder, plus signed-PSBT verification, Schnorr checks, and finalization only after verification passes |
 | `src/lib/broadcast.ts` | Manual broadcast: operator authorization, local txid re-derivation, network-scoped endpoints, node-rejection classification, txid lookup instead of resubmission, duplicate-submission guard |
-| `src/lib/xverse.ts` | Sats Connect client: typed requests, timeouts, error mapping, network reconciliation, signing only (`broadcast: false`) |
+| `src/lib/imported-transaction.ts` | Inspecting a pasted/imported raw transaction: local decode, txid re-derivation, and an explicit list of what cannot be verified without the original approval evidence. Never inherits approval, never auto-broadcasts |
+| `src/lib/xverse.ts` | Sats Connect client: typed requests, timeouts, error mapping, network reconciliation, wallet size-limit classification, signing only (`broadcast: false`) |
 | `src/components/Reclaimer.tsx` | Console UI: connect, scan, acknowledge, select, build, sign, verify, review, authorize, broadcast |
+| `src/components/console/ImportTransaction.tsx` | Import panel: load, inspect, acknowledge and (separately) broadcast an imported raw transaction |
+| `src/components/legal/LegalPage.tsx` | Shared shell for the policy routes (`/privacy`, `/terms`, `/risk`, `/open-source`) |
 | `app/layout.tsx` | Single root layout, shared metadata, and the only place global CSS is imported |
 | `app/(routes)` | `/` is the public landing page; `/app` mounts `Reclaimer`. `app/icon.svg`, `app/sitemap.ts` and `app/robots.ts` are metadata routes |
 | `src/components/landing/*` | Landing sections. `Nav`, `Hero`, `HowItWorks`, `Problem`, `Trust`, `Faq`, `Footer` are static; `HeroVisualization` and `Demo` are the only components that run a frame loop, and both own and release it |
@@ -84,6 +87,19 @@ framework, and no animation dependency.
   finalizes it, and reads the real relay weight from the serialized artifact. It
   never sizes from a fixed per-input rule. `estimateSweepWeight` is retained only
   as a cross-check that the analytic model agrees with the library.
+- **Size before building, not after.** `largestInputCountForWeight()` computes how
+  many inputs of a given prevout type can fit the weight budget *before* a
+  candidate is built. Without it the planner had to build the whole selection to
+  measure it, and `buildSweepBatch` refuses anything over
+  `MAX_STANDARD_TX_WEIGHT` — so for 2,000+ inputs the build threw before the
+  planner could fall back to batching, and `WEIGHT_LIMIT_EXCEEDED` was
+  unrecoverable. The fallback now runs because the count is known first.
+- **Dust and fee floor.** `dustThresholdSats()` reimplements Core's
+  `GetDustThreshold` per output type, and the builder asserts
+  `feeSats >= feeForWeight(measuredWeight, rate)`. Honest limit: the library
+  collapses a sub-dust remainder before the dust assertion can see it, so that
+  guard is currently unreachable and is recorded as such rather than counted as
+  exercised.
 
 ## Published API surface (verified against installed packages)
 
@@ -134,17 +150,31 @@ broadcast layer re-derives the txid from the raw bytes before any submission.
 
 ### M3: asset-awareness
 
-Status: partial. UTXO-level classification exists (inscription-bearing,
-multi-inscription, JSON-like content types, curated collections, missing content
-types) and every assessment reports `detectionComplete: false`. Runes, BRC-20
-balances and rare sats are not detectable through this API and are reported as
-such instead of being guessed.
+Status: complete for its scope. UTXO-level classification exists
+(inscription-bearing, multi-inscription, JSON-like content types, curated
+collections, missing content types) and every assessment reports
+`detectionComplete: false`. Runes, BRC-20 balances and rare sats are not
+detectable through this API and are reported as such instead of being guessed.
+The transaction export/import half is implemented: `imported-transaction.ts`
+decodes an imported raw transaction locally, re-derives its txid, and reports
+`feeSats`/`inputSats` as `null` with the explicit list of what cannot be verified
+without the original approval evidence. An imported transaction never inherits
+approval (fresh per-txid checkbox plus the `SPEND AS BTC` phrase) and never
+auto-broadcasts.
 
 ### M4: large-wallet sweeper
 
-Status: partial. Batching is weight- and count-bounded and deterministic. Not yet
-done: probing real wallet/provider payload limits, sequential signed-batch
-tracking, resume after cancellation, fee-rate refresh between batches.
+Status: complete for the sizes that can be measured here. Batching is weight- and
+count-bounded and deterministic, and 1/100/500/1,083/2,000/5,000/10,000 UTXOs are
+planned, batched and measured from the serialized artifacts; every size up to
+2,000 is also signed and independently verified. Results and the per-size
+invariants are in [`docs/PERFORMANCE.md`](PERFORMANCE.md).
+
+Still not proven, and recorded as **NOT VERIFIED** in
+[`docs/RELEASE_GATES.md`](RELEASE_GATES.md): the provider's real PSBT payload
+limit. Local signing with a deterministic key does not exercise Xverse's request
+size limit. The largest input count approved by a real wallet is recorded
+separately (1,079 inputs, evidenced by the confirmed Mainnet transaction).
 
 ### M5: Mainnet sweep workflow
 
@@ -178,6 +208,18 @@ While it is on:
 - after submission, an explicit **Check confirmation** action looks the txid up on
   the same independent nodes (mempool or confirmed, with the block height when
   reported) without ever submitting anything.
+
+## Documentation map
+
+| Document | What it answers |
+| --- | --- |
+| [`docs/RELEASE_GATES.md`](RELEASE_GATES.md) | What is PASS / FAIL / NOT VERIFIED, with evidence, and what still blocks launch |
+| [`docs/SECURITY_REVIEW.md`](SECURITY_REVIEW.md) | The internal security review: method, findings, fixes, and what was not examined |
+| [`docs/MAINNET_ACCEPTANCE.md`](MAINNET_ACCEPTANCE.md) | The confirmed Mainnet sweep: raw endpoint evidence, byte-level re-derivation, accounting, and what it does not prove |
+| [`docs/PERFORMANCE.md`](PERFORMANCE.md) | Measured large-wallet acceptance from 1 to 10,000 UTXOs |
+| [`docs/RISK.md`](RISK.md) | The risk disclosure published on the website |
+| [`docs/PUBLIC_BETA.md`](PUBLIC_BETA.md) | Beta readiness, launch blockers and the unsigned-transaction persistence design |
+| [`docs/DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) | Tokens, typography and motion rules shared by both routes |
 
 ## Non-goals
 

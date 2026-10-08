@@ -1,0 +1,128 @@
+name: Wallet compatibility report
+description: A wallet connected, or failed to connect, and you want it recorded.
+title: '[wallet] '
+labels: ['wallet-compatibility', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Read this before you type anything
+
+        **Never post a seed phrase, recovery words, a private key, or a wallet
+        file.** No maintainer will ever ask for one. A post containing key
+        material will be deleted unread.
+
+        This template is for recording which wallets work and which do not. If you
+        found a way to bypass a verification step, that is a vulnerability: use
+        **Security** tab → **Report a vulnerability** instead.
+
+        **Xverse is the only supported wallet today.** Other wallets may work if
+        they implement Sats Connect, but none has been tested, and "it connected"
+        is not the same as "it signed and the result verified".
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety acknowledgement
+      options:
+        - label: This report contains no seed phrase, private key, wallet file, or other key material.
+          required: true
+
+  - type: input
+    id: wallet
+    attributes:
+      label: Wallet and exact version
+      placeholder: 'Xverse 1.2.3'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where does the wallet run?
+      options:
+        - Browser extension
+        - In-app browser (mobile)
+        - Hardware wallet behind the extension
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: address_type
+    attributes:
+      label: Which address type did the wallet report for Ordinals?
+      description: The console shows this. Inscription UTXOs are Taproot, so anything other than `p2tr` cannot be swept by this tool.
+      options:
+        - p2tr (Taproot — the only supported type)
+        - p2wpkh
+        - p2sh
+        - Not reported / the connection failed before this
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: How far did it get?
+      options:
+        - Connected, and the address/key proof passed
+        - Connected, but the app refused the address/key proof
+        - Connected, but the app reported a network mismatch
+        - The scan ran but returned nothing
+        - The scan returned inscriptions, but the sweep could not be built
+        - Signing was requested and the wallet approved it, but verification failed
+        - Signing was requested and the wallet approved it, and verification passed
+        - Signing was refused by the wallet (user cancelled)
+        - Signing was refused by the wallet as too large
+        - The wallet never appeared as available
+    validations:
+      required: true
+
+  - type: input
+    id: inputs
+    attributes:
+      label: How many UTXOs were in the request?
+      description: 'The number the console showed, and whether the request was one transaction or several batches.'
+      placeholder: '1,079 inputs, one transaction'
+    validations:
+      required: false
+
+  - type: input
+    id: payload
+    attributes:
+      label: PSBT size, if you saw it
+      description: 'The console reports the measured size. For a large wallet this is the number that decides whether the wallet can sign it.'
+      placeholder: '62,087 vB / 248,348 WU'
+    validations:
+      required: false
+
+  - type: textarea
+    id: detail
+    attributes:
+      label: What the wallet said
+      description: The exact error message or refusal, and any error code the console showed in brackets.
+      render: shell
+    validations:
+      required: true
+
+  - type: dropdown
+    id: network
+    attributes:
+      label: Network
+      options:
+        - Mainnet
+        - Testnet
+        - Signet
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: wanted
+    attributes:
+      label: Should this wallet be supported?
+      description: If you want a wallet added, say why, and note whether it exposes a Taproot Ordinals address plus a signing interface through Sats Connect. That is a hard requirement, not a preference.
+    validations:
+      required: false

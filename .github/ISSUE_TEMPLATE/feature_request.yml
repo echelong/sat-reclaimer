@@ -1,0 +1,83 @@
+name: Feature request
+description: Propose a change in behaviour, not just in code.
+title: '[feature] '
+labels: ['enhancement', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Read this before you type anything
+
+        **Never post a seed phrase, recovery words, a private key, or a wallet
+        file.** A post containing key material will be deleted unread.
+
+        Some proposals are outside what this project will ever do, and it is worth
+        checking the list before writing a long proposal:
+
+        - **Custody of any kind** — deposit addresses, holding funds, accounts.
+        - **Requesting a seed phrase or private key**, for any reason, ever.
+        - **Combining signing and broadcasting** into one action.
+        - **Broadcasting automatically**, or resubmitting after an ambiguous answer.
+        - **Deleting or "cleaning" inscriptions.** Nothing on chain can be deleted.
+        - **Inferring that an output is safe** because it has few inscriptions.
+        - **A platform fee, a percentage of recovered sats, or a paid tier.**
+
+        See [`docs/ARCHITECTURE.md`](../blob/master/docs/ARCHITECTURE.md) for the
+        non-goals and [`CLAUDE.md`](../blob/master/CLAUDE.md) for the hard rules.
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety acknowledgement
+      options:
+        - label: This request contains no seed phrase, private key, wallet file, or other key material.
+          required: true
+        - label: This request is not on the "will never do" list above.
+          required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Wallet support (a second wallet, or better Xverse handling)
+        - Transaction building / batching / fees
+        - Verification and safety checks
+        - Large wallets and performance
+        - The console UI and wording
+        - The landing page and documentation
+        - Deployment and self-hosting
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation you are in, not the implementation you have in mind. "I have 4,000 UTXOs and the wallet rejects the payload" is more useful than "add a batch size setting".
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: safety_impact
+    attributes:
+      label: Bitcoin safety impact
+      description: 'What could this change make easier to get wrong? Be specific: could it let a transaction be built, signed, verified or broadcast without the gates that exist today? "None" is an acceptable answer if you have thought about it.'
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Including doing nothing, or doing it outside this tool.
+    validations:
+      required: false
