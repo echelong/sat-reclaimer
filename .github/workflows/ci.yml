@@ -150,5 +150,10 @@ jobs:
       - name: Audit the full tree, allowing only documented dev-only exceptions
         run: |
           set -uo pipefail
-          pnpm audit --json > audit.json
+          # `pnpm audit` exits non-zero whenever it has anything to report, which is
+          # also its normal output here, so the status is intentionally ignored:
+          # scripts/audit-allowlist.mjs reads the report and decides what fails.
+          # Without the `|| true` the runner's inherited `bash -e` aborts the step
+          # before that decision is ever made.
+          pnpm audit --json > audit.json || true
           node scripts/audit-allowlist.mjs audit.json
