@@ -461,6 +461,18 @@ export function Reclaimer() {
               </select>
             </label>
 
+            {!MAINNET_ENABLED && (
+              <p className="cx-note cx-note-tight">
+                Mainnet is off in this build, so Mainnet cannot be selected here — and that is
+                a build-time setting, not something this page can switch on for you. To use it,
+                stop the server and start it again with <code>pnpm local</code>, choosing a
+                Mainnet mode. On Mainnet the console validates the destination against Mainnet
+                rules, shows <code>MAINNET — REAL BTC</code> throughout, and adds a second
+                acknowledgement. Signing and broadcasting stay separate in every mode, and
+                broadcasting is never automatic.
+              </p>
+            )}
+
             <div className="cx-actions">
               <button className="btn btn-primary" onClick={onConnect} disabled={busy}>
                 {wallet ? 'Reconnect Xverse' : 'Connect Xverse'}
