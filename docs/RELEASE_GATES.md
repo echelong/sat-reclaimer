@@ -89,15 +89,15 @@ and the final release report.
 | # | Requirement | Status | Evidence |
 | --- | --- | --- | --- |
 | F1 | LICENSE present and compatible with all bundled source | **PASS** | `LICENSE` (MIT, "Copyright (c) 2026 echelong") with a third-party licence table |
-| F2 | Public repository exists under `echelong`, name/description/topics set | **PENDING** | Recorded in the final release report after Phase 5 |
+| F2 | Public repository exists under `echelong`, name/description/topics set | **PASS** | `https://github.com/echelong/sat-reclaimer` — PUBLIC, default branch `master`, description set, topics: bitcoin, ordinals, taproot, sats, psbt, open-source, xverse, nextjs. One branch, zero tags |
 | F3 | Publication audit of the complete history: no secrets, personal data or AI attribution | **PASS** | Both scan modes exit 0; sole author/committer is `Sat Reclaimer <sat-reclaimer@localhost>`; no AI/Co-authored-by trailers in any commit |
 | F4 | Never force-push or overwrite existing remote history | **PASS** | No remote configured at audit time; creation path checks existence first |
 | F5 | README / CONTRIBUTING / SECURITY / CODE_OF_CONDUCT / issue + PR templates | **PASS** | All present in the tree |
-| F6 | CI runs lint, typecheck, test, build on the public initial commit | **PENDING** | Workflows authored (`.github/workflows/ci.yml`); first green run on GitHub recorded in the final report |
+| F6 | CI runs lint, typecheck, test, build on the public initial commit | **PASS** | Run `37763118042` on `master`: `lint, typecheck, test, build` success, `large-wallet acceptance (up to 10,000 UTXOs)` success, `repository secret scan` success, `dependency security review` success; CodeQL success. The first attempt failed the audit job for real reasons — that is how E9/E10 were found |
 | F7 | Dependency security review in CI | **PASS** | `audit` job: `pnpm audit --prod --audit-level=high` gates what ships, then `scripts/audit-allowlist.mjs` gates the rest of the tree and fails on anything not explicitly waived. The initial push failed this job, which is how 39 advisories were found; it now passes |
 | F8 | CodeQL / static analysis | **PASS** | `.github/workflows/codeql.yml` (`security-and-quality`, weekly cron) |
 | F9 | Dependabot configured for npm + actions | **PASS** | `.github/dependabot.yml` (grouped bitcoin/react/tooling) |
-| F10 | Branch protection requiring CI before merge | **NOT VERIFIED** | Requires repository settings that cannot be applied by code; documented in the final report |
+| F10 | Branch protection requiring CI before merge | **PASS** | A branch rule on `master` requires the four CI checks and the CodeQL job, forbids force pushes and deletion, and requires branches to be current. `enforce_admins` is **off** deliberately so the solo maintainer is not locked out of their own repository; a multi-contributor setup should turn it on and require reviews |
 
 ## G — Production infrastructure
 
@@ -152,13 +152,13 @@ elements extending past the device width.
 | I4 | Open-source information page linking the repository | **PASS** | `/open-source` |
 | I5 | Explicitly states inscriptions may travel with the sats and are not erased | **PASS** | `/risk`, `docs/RISK.md`, FAQ, Trust section |
 | I6 | Does not claim an audit, guaranteed safety, universal asset detection, universal wallet support, or reversibility | **PASS** | `/risk` "what this project does not claim" table; README |
-| I7 | Public site links the real GitHub repository after publication | **PENDING** | Link present in `Footer.tsx`; the URL is live only after Phase 5 |
+| I7 | Public site links the real GitHub repository after publication | **PASS** | The repository now exists, and the footer link `https://github.com/echelong/sat-reclaimer` was confirmed present in the rendered DOM at every viewport (1440/1280/834/390/320). `/open-source` links it too |
 
 ## J — Final user acceptance
 
 | # | Requirement | Status | Evidence |
 | --- | --- | --- | --- |
-| J1 | A stranger can find the repo, read the code and understand the risks | **PENDING** | Depends on F2 |
+| J1 | A stranger can find the repo, read the code and understand the risks | **PASS** | The repository is public and topic-tagged; `README.md` leads with what the tool does, what it cannot detect and what it costs, and links `docs/RISK.md` and `docs/RELEASE_GATES.md`. This covers the artifact being usable and honest, not promotion, which has not happened |
 | J2 | A user connects Xverse, scans hundreds/thousands of inscriptions and sees gross BTC, fees and net output | **NOT VERIFIED** | Requires a live wallet and a funded ordinal wallet; synthetic only in this repo |
 | J3 | The user independently approves in Xverse and explicitly broadcasts, paying zero platform fees | **NOT VERIFIED** | Requires a live wallet; no platform fee exists in code or pricing |
 | J4 | The user can verify the TXID and its confirmation | **PASS** | *Check confirmation* action; verified on chain for the confirmed sweep |
@@ -168,9 +168,9 @@ elements extending past the device width.
 ## Gate summary
 
 - **PASS with reproducible in-repo evidence:** A1–A10, B1–B4, C1–C6, D1–D6,
-  E1–E6, E9–E10, F1, F3–F5, F7–F9, G1–G5, G8, H1–H8, I1–I6, J4.
-- **PENDING (verified during Phase 5 and recorded in the final report):**
-  F2, F6, I7, J1.
+  E1–E6, E9–E10, F1–F10, G1–G5, G8, H1–H8, I1–I7, J1, J4.
+- **No gate is left PENDING.** Every requirement is PASS, FAIL or NOT VERIFIED
+  with evidence attached above.
 - **FAIL (must be fixed before unrestricted public launch):** E8 (no security
   contact).
 - **NOT VERIFIED (no evidence available here):** A11, B5, B6, C7, E7, F10, G7,
