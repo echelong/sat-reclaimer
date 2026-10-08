@@ -93,6 +93,31 @@ export function Trust() {
 
         <div className="trust-honest">
           <Reveal>
+            {/* Wrapped in one span on purpose: `.trust-honest-line` is a grid
+             * container, so bare inline children would each become their own
+             * grid row instead of flowing as one paragraph. */}
+            <p className="trust-honest-line mono">
+              <span className="tag tag-ok">Verified sweep</span>
+              <span>
+                This tool&apos;s weight model and a real Mainnet sweep agree to the weight unit. A
+                confirmed transaction spent 1,079 inscription-bearing Taproot outputs in{' '}
+                <strong>one</strong> 248,348 WU transaction, paying 62,087 sats to move 601,214 sats
+                — exactly <code>vsize × 1 sat/vB</code>, with no platform fee of any kind. TXID{' '}
+                <a
+                  className="trust-link"
+                  href="https://mempool.space/tx/0a7d30ca8f940b137c96c65bb32ffec34f53a8a128cadf154f8df83055257e1a"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  0a7d30ca…55257e1a ↗
+                </a>{' '}
+                in block 970454. Verify it yourself — the arithmetic is in{' '}
+                <code>docs/MAINNET_ACCEPTANCE.md</code>. One confirmed sweep is evidence, not a
+                guarantee, and it is not an audit.
+              </span>
+            </p>
+          </Reveal>
+          <Reveal delay={90}>
             <p className="trust-honest-line mono">
               <span className="tag tag-warn">Not audited</span>
               Sat Reclaimer has not been independently security-audited. It is an early public beta
@@ -101,7 +126,7 @@ export function Trust() {
               &ldquo;audited&rdquo;, and we will not pretend otherwise.
             </p>
           </Reveal>
-          <Reveal delay={120}>
+          <Reveal delay={180}>
             <p className="trust-honest-line mono">
               <span className="tag">Mainnet opt-in</span>
               Real-value Mainnet use is never a default. It is a deliberate, separate switch, and

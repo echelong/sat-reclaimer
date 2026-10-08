@@ -11,9 +11,16 @@ import { useReducedMotion } from '@/src/components/ui/useReducedMotion';
  * nothing in this file imports from `src/lib` — the demo literally cannot reach
  * the Bitcoin engine. The wording throughout says so.
  *
- * Numbers come from the original test wallet (1,083 inscriptions in 1,079 unique
- * UTXOs holding 601,214 sats) and a measured-size P2TR sweep. They are labelled
- * as illustrative everywhere they appear.
+ * The numbers are the measured values of a real Mainnet sweep that this tool's
+ * sizing model reproduces exactly: 1,079 unique Taproot inputs holding 601,214
+ * sats collapsed into one 539,127-sat output, confirmed in block 970454 at a
+ * 62,087-sat fee — 62,087 vB at exactly 1 sat/vB. See
+ * `docs/MAINNET_ACCEPTANCE.md`. The wallet reported 1,083 inscriptions across
+ * those 1,079 outputs.
+ *
+ * The *animation* is a simulation: it has no wallet handle and no network client,
+ * so it cannot sign or broadcast by construction. The arithmetic it displays is
+ * real, and it is labelled as a simulation everywhere it appears.
  *
  * The whole sequence is derived from one clock, so pausing, replaying or
  * unmounting is a single value change and there are no orphaned timers.
@@ -24,8 +31,13 @@ const UTXOS = 1079;
 const INPUT_SATS = 601_214;
 /** The demo is priced at 1 sat/vB so the arithmetic is checkable by eye. */
 const FEE_RATE_SAT_VB = 1;
-/** Vsize of a one-output P2TR sweep of this wallet, from the planner's measurement. */
-const VSIZE = 62_084;
+/**
+ * Measured vsize of the confirmed Mainnet sweep of exactly this wallet: 248,348
+ * WU for 1,079 key-path inputs, one P2SH destination output. The application's
+ * independent weight model computes 248,348 WU for these parameters, and the
+ * fee that landed on chain was exactly 62,087 sats at 1 sat/vB.
+ */
+const VSIZE = 62_087;
 const FEE_SATS = VSIZE * FEE_RATE_SAT_VB;
 const OUTPUT_SATS = INPUT_SATS - FEE_SATS;
 
@@ -51,8 +63,8 @@ const LOG: LogLine[] = [
   { at: 2_300, text: 'deduplicate by txid:vout -> 1,079 unique outputs', kind: 'info' },
   { at: 3_000, text: 'postage sum -> 601,214 sats', kind: 'info' },
   { at: 4_250, text: 'planSweep :: 1,079 inputs -> 1 transaction', kind: 'cmd' },
-  { at: 4_900, text: 'measured vsize 62,084 vB @ 1 sat/vB -> fee 62,084 sats', kind: 'info' },
-  { at: 5_600, text: 'destination output -> 539,130 sats', kind: 'info' },
+  { at: 4_900, text: 'measured vsize 62,087 vB @ 1 sat/vB -> fee 62,087 sats', kind: 'info' },
+  { at: 5_600, text: 'destination output -> 539,127 sats', kind: 'info' },
   { at: 6_400, text: 'verify signed PSBT :: 1,079/1,079 signatures .... OK', kind: 'ok' },
   { at: 7_050, text: 'SIMULATION COMPLETE. Nothing was signed or broadcast.', kind: 'ok' },
 ];
@@ -313,7 +325,7 @@ export function Demo() {
               <span className="pulse-dot" />
               Simulated · not connected to a wallet
             </span>
-            <span className="demo-bar-note mono">illustrative values · 1 sat/vB</span>
+            <span className="demo-bar-note mono">confirmed sweep values · 1 sat/vB</span>
           </div>
 
           <div className="demo-grid">
@@ -414,8 +426,11 @@ export function Demo() {
               </dl>
 
               <p className="demo-note mono">
-                Illustrative only. A real sweep&apos;s fee depends on live fee rates and the exact
-                input count; on a small wallet the fee can outweigh the sats recovered.
+                These are the measured values of a real sweep, confirmed on Mainnet in block 970454
+                at a 62,087-sat fee: 601,214 sats in, 539,127 sats out, one transaction. The
+                animation is a simulation — nothing here is signed or broadcast. Live fee rates
+                change the arithmetic, and on a small wallet the fee can outweigh the sats
+                recovered.
               </p>
             </div>
           </div>
