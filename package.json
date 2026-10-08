@@ -3,13 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:max": "LARGE_WALLET_MAX=1 vitest run tests/large-wallet.test.ts",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
     "@noble/curves": "2.4.0",
