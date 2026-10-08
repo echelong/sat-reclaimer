@@ -55,8 +55,10 @@ and the final release report.
 | C3 | Imported raw transactions never inherit prior approval and never auto-broadcast | **PASS** | `src/lib/imported-transaction.ts` + `src/components/console/ImportTransaction.tsx`; `tests/imported-transaction.test.ts` |
 | C4 | Unverifiable fields of an imported transaction are reported, not assumed | **PASS** | `feeSats`/`inputSats` returned `null` with a 4-item `unverifiable` list |
 | C5 | Post-scan wallet/network switch, disconnect and reconnect handled | **PASS** | `src/components/Reclaimer.tsx`; covered by component behaviour and `tests/wallet.test.ts` |
-| C6 | A signed transaction is recoverable after a page refresh | **PASS (partial)** | *Download verified .hex* exists; automatic persistent recovery is documented but not implemented (`docs/PUBLIC_BETA.md`) |
-| C7 | Signet/Testnet end-to-end sweep | **NOT VERIFIED** | No inscription-bearing Signet UTXO exists to spend; cannot be demonstrated in this environment |
+| C6 | A verified raw transaction can be exported before the window is lost | **PASS** | *Download verified .hex* writes the finalized raw transaction; a raw transaction is public network data and contains no key material |
+| C7 | An exported transaction can be brought back and broadcast without signing again | **PASS** | The import panel requires a fresh per-`txid` acknowledgement and the `SPEND AS BTC` phrase, decodes and re-derives locally, never inherits prior approval, never auto-broadcasts, and shares the broadcast ledger |
+| C8 | A signed transaction survives a page refresh with no user action | **NOT VERIFIED** | Deliberately not implemented — persisting a near-broadcast transaction is the failure mode this project forbids, and the safe design is written up in `docs/PUBLIC_BETA.md`. **A user who did not download the `.hex` before the refresh must sign again** |
+| C9 | Signet/Testnet end-to-end sweep | **NOT VERIFIED** | No inscription-bearing Signet UTXO exists to spend; cannot be demonstrated in this environment |
 
 ## D — Large-wallet acceptance
 
@@ -108,7 +110,7 @@ and the final release report.
 | G3 | Security headers, CSP and cache policy correct in production | **PASS** | `next.config.ts` (`/app` `no-store`; policy pages `s-maxage=3600`) |
 | G4 | robots/sitemap rules and canonical/OG metadata | **PASS** | `app/robots.ts`, `app/sitemap.ts`, `NEXT_PUBLIC_SITE_URL` (falls back to localhost until the domain exists) |
 | G5 | `NEXT_PUBLIC_*` treated as public config, not an authorization boundary | **PASS** | Enforced in code: broadcast refuses regardless of UI state; server-side is the authority |
-| G6 | Rate limiting, where server routes exist | **N/A** | No server routes. Broadcast submissions go directly to public nodes from the browser |
+| G6 | Rate limiting, where server routes exist | **PASS** | There are no server routes — no `route.ts` anywhere in the tree — so there is nothing to rate limit; broadcast submissions go from the browser straight to public nodes. Revisit the moment a server route is added |
 | G7 | Staging deployment protected from public access and indexing | **NOT VERIFIED** | No deployment performed; the production policy in this repo allows indexing and must be narrowed for a staging host |
 | G8 | Production feature level reports the true public-launch state | **PASS** | `docs/PUBLIC_BETA.md` states the site is **not** ready for unrestricted public Mainnet reclaim while gates A11/E7/B6 are open |
 
@@ -167,14 +169,16 @@ elements extending past the device width.
 
 ## Gate summary
 
-- **PASS with reproducible in-repo evidence:** A1–A10, B1–B4, C1–C6, D1–D6,
-  E1–E6, E9–E10, F1–F10, G1–G5, G8, H1–H8, I1–I7, J1, J4.
-- **No gate is left PENDING.** Every requirement is PASS, FAIL or NOT VERIFIED
-  with evidence attached above.
+- **PASS with reproducible in-repo evidence:** A1–A10, B1–B4, C1–C7, D1–D6,
+  E1–E6, E9–E10, F1–F10, G1–G6, G8, H1–H8, I1–I7, J1, J4.
+- **No gate is left PENDING, and every gate carries exactly one of the three
+  allowed statuses** — PASS, FAIL or NOT VERIFIED — with its evidence attached
+  above. No gate is marked N/A or "partial": a requirement that is only partly met
+  is split into the part that passes and the part that does not.
 - **FAIL (must be fixed before unrestricted public launch):** E8 (no security
   contact).
-- **NOT VERIFIED (no evidence available here):** A11, B5, B6, C7, E7, F10, G7,
-  H9, H10, J2, J3.
+- **NOT VERIFIED (no evidence available here):** A11, B5, B6, C8, C9, E7, G7, H9,
+  H10, J2, J3.
 
 ### Unrestricted public Mainnet launch is blocked by
 
