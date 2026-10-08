@@ -100,8 +100,72 @@ export function vsizeFor(weight: number): number {
   return Math.ceil(weight / 4);
 }
 
+/**
+ * The largest input count whose single-output sweep fits a weight budget.
+ *
+ * This inverts `estimateSweepWeight`, which is affine in the input count. It
+ * exists because the alternative — building the oversized transaction and
+ * measuring it — is impossible: the builder refuses to serialize anything above
+ * the standard weight limit, which is the whole reason a plan has to batch at
+ * all. Correctness does not rest on the model here: `buildSweepBatch` asserts
+ * that `estimateSweepWeight` equals the library's own measured weight for every
+ * batch it actually builds, so a drift between model and reality fails the build
+ * rather than producing an oversized transaction.
+ */
+export function largestInputCountForWeight(
+  outputScriptBytes: number,
+  maxWeight: number,
+  maxInputs = 100_000,
+): number {
+  if (maxInputs < 1) return 0;
+  // Solve the affine part for the varint regime above 252 inputs, then walk the
+  // result to the exact boundary. varint aliasing means the true answer is at
+  // most a step or two from the closed form, and the loop is bounded by
+  // `maxInputs` regardless.
+  const overhead = estimateSweepWeight(1, outputScriptBytes) - P2TR_KEYPATH_INPUT_WEIGHT;
+  let candidate = Math.floor((maxWeight - overhead) / P2TR_KEYPATH_INPUT_WEIGHT);
+  if (!Number.isFinite(candidate) || candidate > maxInputs) candidate = maxInputs;
+  candidate = Math.max(1, candidate);
+  while (candidate > 1 && estimateSweepWeight(candidate, outputScriptBytes) > maxWeight) {
+    candidate -= 1;
+  }
+  while (
+    candidate < maxInputs &&
+    estimateSweepWeight(candidate + 1, outputScriptBytes) <= maxWeight
+  ) {
+    candidate += 1;
+  }
+  return estimateSweepWeight(candidate, outputScriptBytes) <= maxWeight ? candidate : 0;
+}
+
 export function feeForWeight(weight: number, feeRateSatVb: bigint): bigint {
   return BigInt(vsizeFor(weight)) * feeRateSatVb;
+}
+
+/** Bitcoin Core's default `-dustrelayfee`, and the value the threshold below uses. */
+export const DUST_RELAY_FEE_SAT_PER_KVB = 3_000n;
+
+/**
+ * Bitcoin Core's dust threshold for one output, reproduced so the builder can
+ * refuse a tox output before it is ever serialized.
+ *
+ * `GetDustThreshold` (policy/policy.cpp) is
+ * `dustRelayFee.GetFee(nSize)` where `nSize` is the serialized output plus the
+ * cost of the input that would later have to spend it: 148 bytes for an output
+ * that is not a witness program (plus 75% witness discount on the 107-byte
+ * script size for one that is). Reproducing it locally means a below-threshold
+ * output cannot be produced by a library upgrade or an unexpected code path.
+ */
+export function dustThresholdSats(outputScript: Uint8Array): bigint {
+  const serialized = 8 + varIntSize(outputScript.length) + outputScript.length;
+  const isWitnessProgram =
+    outputScript.length >= 4 &&
+    outputScript.length <= 42 &&
+    (outputScript[0] === 0x00 || outputScript[0] === 0x51) &&
+    outputScript[1] === outputScript.length - 2;
+  const spendCost = isWitnessProgram ? 32 + 4 + 1 + Math.floor(107 / 4) + 4 : 148;
+  const size = BigInt(serialized + spendCost);
+  return (DUST_RELAY_FEE_SAT_PER_KVB * size) / 1_000n;
 }
 
 export type ValidatedDestination = {

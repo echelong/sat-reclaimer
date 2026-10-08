@@ -167,6 +167,10 @@ export function endpointsForNetwork(network: AppNetwork): readonly BroadcastEndp
  * submitted do not hash to the verified txid, nothing is submitted.
  */
 export function txidFromRawTransaction(rawTxHex: string): string {
+  return parseRawTransaction(rawTxHex).id;
+}
+
+function parseRawTransaction(rawTxHex: string): btc.Transaction {
   const cleaned = rawTxHex.trim();
   if (!/^[0-9a-fA-F]+$/.test(cleaned) || cleaned.length % 2 !== 0) {
     throw new ReclaimerError(
@@ -175,7 +179,7 @@ export function txidFromRawTransaction(rawTxHex: string): string {
     );
   }
   try {
-    return btc.Transaction.fromRaw(hex.decode(cleaned)).id;
+    return btc.Transaction.fromRaw(hex.decode(cleaned));
   } catch (error) {
     throw new ReclaimerError(
       'BROADCAST_MALFORMED',
@@ -183,6 +187,32 @@ export function txidFromRawTransaction(rawTxHex: string): string {
       { cause: error },
     );
   }
+}
+
+/**
+ * Prove the bytes are a finalized, signed transaction before they are offered to
+ * a node. This app only ever builds Taproot key-path sweeps, so every input must
+ * carry a witness signature: an unsigned or partially stripped transaction is
+ * refused here rather than submitted and rejected with an opaque node error.
+ */
+export function assertFinalizedTransaction(rawTxHex: string): btc.Transaction {
+  const tx = parseRawTransaction(rawTxHex);
+  if (tx.inputsLength < 1 || tx.outputsLength < 1) {
+    throw new ReclaimerError(
+      'BROADCAST_MALFORMED',
+      `Refusing to broadcast: the raw transaction has ${tx.inputsLength} input(s) and ${tx.outputsLength} output(s).`,
+    );
+  }
+  for (let index = 0; index < tx.inputsLength; index += 1) {
+    const witness = tx.getInput(index).finalScriptWitness;
+    if (!witness || witness.length === 0 || witness.every((item) => item.length === 0)) {
+      throw new ReclaimerError(
+        'BROADCAST_MALFORMED',
+        `Refusing to broadcast: input ${index} carries no signature, so the raw transaction is not a finalized transaction.`,
+      );
+    }
+  }
+  return tx;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -479,21 +509,25 @@ export async function checkTxidStatus(args: {
       continue;
     }
     if (!response.ok) continue;
-    answered = true;
-    let confirmed = false;
-    let blockHeight: number | null = null;
-    if (response.json) {
-      try {
-        const body = await response.json();
-        if (typeof body === 'object' && body !== null) {
-          confirmed = (body as { confirmed?: unknown }).confirmed === true;
-          const height = (body as { block_height?: unknown }).block_height;
-          blockHeight = typeof height === 'number' ? height : null;
-        }
-      } catch {
-        confirmed = false;
-      }
+    if (!response.json) continue;
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch {
+      continue;
     }
+    if (typeof body !== 'object' || body === null) continue;
+    const confirmedFlag = (body as { confirmed?: unknown }).confirmed;
+    // ESPlora's `/tx/{txid}/status` always reports a boolean `confirmed`. If an
+    // endpoint answers 200 with anything else (a proxy page, a rate-limit body,
+    // a different API shape) the answer is inconclusive, not "in the mempool" —
+    // claiming a mempool presence that was never reported would be a fabricated
+    // result, so the next endpoint is asked instead.
+    if (typeof confirmedFlag !== 'boolean') continue;
+    answered = true;
+    const confirmed = confirmedFlag;
+    const height = (body as { block_height?: unknown }).block_height;
+    const blockHeight = typeof height === 'number' ? height : null;
     return {
       found: true,
       answered: true,
@@ -605,7 +639,7 @@ export async function broadcastRawTransaction(request: BroadcastRequest): Promis
     );
   }
   const rawTxHex = request.rawTxHex.trim().toLowerCase();
-  const derived = txidFromRawTransaction(rawTxHex);
+  const derived = assertFinalizedTransaction(rawTxHex).id;
   if (derived !== txid) {
     throw new ReclaimerError(
       'BROADCAST_TXID_MISMATCH',

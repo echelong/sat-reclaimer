@@ -105,7 +105,26 @@ export type ScanReduction = {
   quarantine: QuarantinedInscription[];
   inscriptionCount: number;
   addressMismatchCount: number;
+  /**
+   * Rows the provider returned without any address at all. They can still be
+   * spent (the PSBT is built from the connected Ordinals key, and verification
+   * re-checks every input script), but the app cannot prove from the indexer
+   * response that they belong to the connected address, so it reports the count
+   * instead of quietly treating them as verified.
+   */
+  unverifiedAddressCount: number;
 };
+
+/**
+ * Bech32/bech32m (BIP173) is case-insensitive — a valid address is entirely
+ * lower case or entirely upper case — so comparing round-tripped addresses must
+ * be too. Base58 never appears here: inscription outputs are always Taproot.
+ * Comparing case-sensitively would quarantine the user's own UTXOs whenever a
+ * provider up-cased the address.
+ */
+function sameAddress(a: string, b: string): boolean {
+  return a.toLowerCase() === b.toLowerCase();
+}
 
 /**
  * Convert inscription rows into a unique UTXO set keyed by `txid:vout`.
@@ -125,7 +144,12 @@ export function scanInscriptionUtxos(
   // per outpoint as well as outpoints being deduplicated overall.
   const seenIds = new Map<string, Set<string>>();
   const quarantine: QuarantinedInscription[] = [];
+  // An outpoint whose value two rows disagreed about stays excluded for the rest
+  // of the scan. Without this, a provider that repeats one of the conflicting
+  // values afterwards would resurrect the outpoint with an unverified amount.
+  const conflicted = new Set<string>();
   let addressMismatchCount = 0;
+  let unverifiedAddressCount = 0;
 
   for (const raw of rows) {
     const validated = validateInscriptionRow(raw);
@@ -140,10 +164,14 @@ export function scanInscriptionUtxos(
     }
     const row = validated.row;
 
+    if (options.expectedAddress && row.address === undefined) {
+      unverifiedAddressCount += 1;
+    }
+
     if (
       options.expectedAddress &&
       row.address !== undefined &&
-      row.address !== options.expectedAddress
+      !sameAddress(row.address, options.expectedAddress)
     ) {
       addressMismatchCount += 1;
       quarantine.push({
@@ -188,14 +216,26 @@ export function scanInscriptionUtxos(
       continue;
     }
 
+    if (conflicted.has(parsed.outpoint)) {
+      quarantine.push({
+        reason: 'postage-conflict',
+        detail: `This output was already excluded because the indexer reported two different values for it; it is excluded for the rest of the scan.`,
+        inscriptionId: row.inscriptionId,
+        output: row.output,
+      });
+      continue;
+    }
+
     const existing = byOutpoint.get(parsed.outpoint);
     if (existing) {
       if (existing.amount !== postage) {
         // Two rows disagree about the value of the same output. The BIP341
         // signature commits to the prevout amount, so a wrong value produces a
-        // transaction the network rejects. Drop the output instead of guessing.
+        // transaction the network rejects. Drop the output instead of guessing,
+        // and remember it so a later row cannot bring it back.
         byOutpoint.delete(parsed.outpoint);
         seenIds.delete(parsed.outpoint);
+        conflicted.add(parsed.outpoint);
         quarantine.push({
           reason: 'postage-conflict',
           detail: `Indexer reported ${existing.amount} sats and ${postage} sats for the same output; its true value is unknown, so it is excluded.`,
@@ -234,6 +274,7 @@ export function scanInscriptionUtxos(
     quarantine,
     inscriptionCount: rows.length,
     addressMismatchCount,
+    unverifiedAddressCount,
   };
 }
 

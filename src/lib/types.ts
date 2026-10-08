@@ -88,6 +88,8 @@ export type ScanResult = {
   duplicateIdCount: number;
   /** True only when the whole wallet was retrieved. Sweep All refuses otherwise. */
   complete: boolean;
+  /** Rows the provider returned with no address, so ownership could not be checked from the response. */
+  unverifiedAddressCount: number;
   warnings: string[];
   truncated: boolean;
 };

@@ -113,10 +113,19 @@ export function decodePsbt(psbtBase64: string, network: AppNetwork): DecodedPsbt
   return decodeTransaction(parsePsbt(psbtBase64), network);
 }
 
+/**
+ * Set equality, both directions. Checking only that every decoded outpoint is an
+ * expected one is not enough: a wallet that duplicated one input and dropped
+ * another would still have the same length and the same membership. Two
+ * implementations of the same set is the only comparison that proves the
+ * signing indexes refer to the transaction the app reviewed.
+ */
 function sameOutpointSet(a: readonly string[], b: readonly string[]): boolean {
   if (a.length !== b.length) return false;
-  const set = new Set(b);
-  return a.every((outpoint) => set.has(outpoint));
+  const expected = new Set(b);
+  const actual = new Set(a);
+  if (actual.size !== expected.size) return false;
+  return a.every((outpoint) => expected.has(outpoint));
 }
 
 /** BIP341 permits 0x00 (default) and 0x01 (all). Anything else can leave
@@ -176,14 +185,14 @@ function probeSignature(args: {
       detail: `Input ${index} was signed with sighash type 0x${hashType.toString(16)}, which would let the outputs be changed later.`,
     };
   }
-  if (outputScript.length !== 34 || outputScript[0] !== 0x51) {
+  if (outputScript.length !== 34 || outputScript[0] !== 0x51 || outputScript[1] !== 0x20) {
     return {
       index,
       present: true,
       length,
       hashType,
       valid: false,
-      detail: `Input ${index} does not pay a P2TR output, so a key-path signature cannot be checked.`,
+      detail: `Input ${index} does not pay a 32-byte P2TR witness program, so a key-path signature cannot be checked.`,
     };
   }
   try {
@@ -443,6 +452,17 @@ export function verifySignedPsbt(
     }
   }
   add('extractable', 'Signed PSBT is complete and finalizable', extractable, extractDetail);
+
+  // Bind the bytes that would actually be broadcast to the txid the user is
+  // asked to authorize. Signatures live in the witness, so finalization must not
+  // move the txid; if it ever did, the artifact and the review would disagree.
+  add(
+    'txid-raw-matches',
+    'Finalized bytes hash to the reviewed txid',
+    finalTxid !== null && finalTxid === decoded.unsignedTxid,
+    finalTxid === null
+      ? 'no finalized transaction to hash'      : `finalized bytes hash to ${finalTxid}, reviewed txid is ${decoded.unsignedTxid}`,
+  );
 
   const ok = checks.every((check) => check.ok);
   return {

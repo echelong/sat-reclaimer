@@ -309,6 +309,7 @@ export async function scanOrdinals(args: {
     retrievedCount: pagination.retrievedCount,
     duplicateIdCount: pagination.duplicateIdCount,
     complete: pagination.complete,
+    unverifiedAddressCount: reduction.unverifiedAddressCount,
     warnings: pagination.warnings,
     truncated: pagination.truncated,
   };

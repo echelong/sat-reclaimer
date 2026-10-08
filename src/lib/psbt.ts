@@ -6,7 +6,10 @@ import {
   assertFeeRateAllowed,
   assertNetworkAllowed,
   deriveOrdinalTaproot,
+  dustThresholdSats,
   estimateSweepWeight,
+  feeForWeight,
+  largestInputCountForWeight,
   toScureNetwork,
   validateDestinationAddress,
   vsizeFor,
@@ -103,6 +106,17 @@ export function buildSweepBatch(args: {
   if (builtAmount <= 0n) {
     throw new ReclaimerError('FEE_EXCEEDS_VALUE', 'Mining fee would consume the entire batch.');
   }
+  // Bitcoin Core relays nothing below its dust threshold, and a receiver's
+  // wallet cannot spend it. The library already collapses a below-dust remainder
+  // into the fee, but that is library behaviour, not a guarantee: assert the
+  // threshold here so a future change cannot produce a non-relayable sweep.
+  const dustThreshold = dustThresholdSats(destinationInfo.script);
+  if (builtAmount < dustThreshold) {
+    throw new ReclaimerError(
+      'DUST_OUTPUT',
+      `At ${args.feeRateSatVb} sat/vB the remaining ${builtAmount} sats is below the ${dustThreshold}-sat relay threshold for a ${destinationInfo.scriptType} output, so the destination could not spend it. Lower the fee rate or include more value.`,
+    );
+  }
   if (hex.encode(builtOutput.script ?? new Uint8Array()) !== destinationInfo.scriptHex) {
     throw new ReclaimerError(
       'ACCOUNTING_MISMATCH',
@@ -184,6 +198,18 @@ export function buildSweepBatch(args: {
     throw new ReclaimerError(
       'ACCOUNTING_MISMATCH',
       `Fee mismatch: library reported ${selected.fee} sats, decoded PSBT implies ${decoded.feeSats} sats.`,
+    );
+  }
+  // The fee must actually pay for the transaction that will be signed. The
+  // library sizes its fee from the same shape this app measures, so today the
+  // two are exactly equal; this asserts the inequality that matters, so a
+  // library change can never produce a verified-looking transaction that
+  // underpays the fee rate the user chose and gets stuck in a mempool.
+  const requiredFee = feeForWeight(measuredWeight, args.feeRateSatVb);
+  if (decoded.feeSats < requiredFee) {
+    throw new ReclaimerError(
+      'ACCOUNTING_MISMATCH',
+      `Refusing to build: the transaction measures ${vsizeFor(measuredWeight)} vB but pays ${decoded.feeSats} sats, less than the ${requiredFee} sats its own size requires at ${args.feeRateSatVb} sat/vB.`,
     );
   }
 
@@ -358,10 +384,13 @@ function batchOf(chunk: ReclaimUtxo[], index: number, batchCount: number): Recla
  * 1. Attempt the entire selection in one transaction and measure its exact
  *    weight from the serialized PSBT.
  * 2. If it fits under the relay policy weight limit (with a safety margin),
- *    that is the plan: one transaction, one destination output.
- * 3. Otherwise compute the largest input count that fits from two real
- *    measurements of this exact transaction shape, and split into the minimum
- *    number of sequential batches.
+ *    that is the plan: one transaction, one destination output, and its exact
+ *    measured weight is recorded in the plan.
+ * 3. Otherwise compute the largest input count that fits this exact transaction
+ *    shape inside the safety budget, and split into the minimum number of
+ *    sequential batches. Every batch is then built and measured for real, and
+ *    `buildSweepBatch` asserts that the analytic model and the library's own
+ *    measured weight agree before the batch is returned.
  *
  * `maxInputsPerBatch` lets the caller force a smaller batch after a wallet
  * rejects a large payload, without touching any transaction validation.
@@ -398,26 +427,24 @@ export function planSweep(args: {
   // 1. Can the entire selection be a single transaction? When the caller has
   // already forced a smaller batch size (wallet fallback), skip the oversized
   // attempt instead of building a transaction that will never be signed.
+  //
+  // A selection that cannot fit must NOT be built just to be measured:
+  // `buildSweepBatch` refuses to serialize anything above the standard weight
+  // limit, so attempting it throws before any measurement exists. The batch size
+  // therefore comes from the analytic model, which the builder cross-checks
+  // against the library's own measured weight for every batch it does build.
   const forced = args.maxInputsPerBatch;
   const attemptWhole = forced === undefined || forced >= utxos.length;
+  const destinationBytes = destinationInfo.script.length;
+  const largestThatFits = largestInputCountForWeight(destinationBytes, MAX_SWEEP_WEIGHT);
 
   let attempt: BuiltBatch | null = null;
   let attemptWeight: number | null = null;
-  let maxPerBatch = utxos.length;
+  let maxPerBatch = Math.max(1, Math.min(utxos.length, largestThatFits));
 
-  if (attemptWhole) {
+  if (attemptWhole && largestThatFits >= utxos.length) {
     attempt = build(utxos, 0, 1);
     attemptWeight = measureFinalizedWeight(attempt.psbtBase64);
-    if (attemptWeight > MAX_SWEEP_WEIGHT && utxos.length > 1) {
-      // For a homogeneous P2TR sweep the finalized weight is affine in the input
-      // count: W(n) = intercept + n * slope. Two real measurements pin it exactly.
-      const one = build(utxos.slice(0, 1), 0, 1);
-      const weightOne = measureFinalizedWeight(one.psbtBase64);
-      const slope = (attemptWeight - weightOne) / (utxos.length - 1);
-      const intercept = weightOne - slope;
-      maxPerBatch =
-        slope > 0 ? Math.max(1, Math.floor((MAX_SWEEP_WEIGHT - intercept) / slope)) : utxos.length;
-    }
   }
   if (forced !== undefined) {
     maxPerBatch = Math.min(maxPerBatch, Math.max(1, forced));
