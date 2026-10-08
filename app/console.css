@@ -317,6 +317,10 @@
   color: var(--text-faint);
 }
 
+/* No `outline: none` here on purpose: the global `:focus-visible` ring in
+ * globals.css is specificity (0,1,0), so a local `outline: none` at (0,1,1) would
+ * silently delete the focus indicator on the two controls a user types real
+ * values into. The border and glow below are additive, not a replacement. */
 .cx-field input,
 .cx-field select {
   width: 100%;
@@ -325,7 +329,6 @@
   border-radius: var(--r-sm);
   background: rgba(5, 7, 12, 0.85);
   color: var(--text);
-  outline: none;
   transition: border-color 0.18s var(--ease), box-shadow 0.18s var(--ease);
 }
 
