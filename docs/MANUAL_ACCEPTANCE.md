@@ -4,11 +4,11 @@ Operator-assisted tests for the parts of SAT//RECLAIMER that only a real browser
 wallet can exercise: Xverse connection, inscription scanning against the live
 provider, signing, and on-chain confirmation.
 
-**Only M1, M2 and M3 have been touched, and only provisionally.** Their result
-cells read `PROVISIONAL PASS` because the operator reported the behaviour; the other
-six cells read `NOT RUN`. This document is a procedure, not a record. Do not read
-the presence of a case as evidence that it passed, and do not close a release gate
-until its result cell holds a real, checkable observation.
+**Only M1–M4 have been touched, and only provisionally.** Their result cells read
+`PROVISIONAL PASS` because the operator reported the behaviour; the other five cells
+read `NOT RUN`. This document is a procedure, not a record. Do not read the presence
+of a case as evidence that it passed, and do not close a release gate until its
+result cell holds a real, checkable observation.
 
 The gates these cases close are listed in [`RELEASE_GATES.md`](RELEASE_GATES.md):
 **B5**, **B6**, **C8**, **C9**, **H9**, **H10**, **J2**, **J3**. All of them are
@@ -277,7 +277,7 @@ provider's page size**, so more than one request is required.
 
 | Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
 | --- | --- |
-| NOT RUN | NOT RUN |
+| **PROVISIONAL PASS** — operator-reported, not yet formally verified | Operator ran the scan at commit `c9ef05b` on 2026-10-08 in `plan` mode and reported it working. **No scan figures were recorded**, so this row claims nothing about them. **Outstanding before this can be a formal PASS:** the step 02 statistics block — **Indexer reported**, **Inscriptions retrieved**, **Unique UTXOs**, **Pages read**, **Total sats** and **Rows with no address** — the rescan's numbers, the chain, the browser and Xverse versions, and a redacted screenshot. Whether the wallet held any inscription UTXOs at all is also unanswered, and if it did not, this observation covers the empty-inventory path only. Gate **H10** (pagination against a live provider) therefore stays **NOT VERIFIED** — a `Pages read` above 1 was never observed, so crossing the provider's page size is unexercised — and **J2** stays **NOT VERIFIED** |
 
 ---
 
@@ -530,7 +530,7 @@ unverified, and the gate it belongs to stays **NOT VERIFIED**.
 | M1 Wallet connection | B5, J2 | **PROVISIONAL PASS** (operator-reported, 2026-10-08, `c9ef05b`, plan mode) — pending chain, versions, screenshot, status line | Operator report only; not yet checkable |
 | M2 Disconnect / reconnect | H9, C5 | **PROVISIONAL PASS** (operator-reported, 2026-10-08, `c9ef05b`, plan mode) — pending chain, versions, screenshot, exact status line | Operator report only; not yet checkable |
 | M3 Network switching | H9, B5 | **PROVISIONAL PASS** (operator-reported, 2026-10-08, `c9ef05b`, plan mode) — pending networks used, versions, screenshot, exact refusal text | Operator report only; not yet checkable |
-| M4 Full inscription scanning | H10, J2 | NOT RUN | NOT RUN |
+| M4 Full inscription scanning | H10, J2 | **PROVISIONAL PASS** (operator-reported, 2026-10-08, `c9ef05b`, plan mode) — pending scan statistics, rescan figures, chain, versions, screenshot | Operator report only; not yet checkable |
 | M5 Large PSBT payload handling | B6 | NOT RUN | NOT RUN |
 | M6 User cancellation | B5 | NOT RUN | NOT RUN |
 | M7 Signing and verification | B5, J3 | NOT RUN | NOT RUN |

@@ -132,7 +132,7 @@ Chromium over the Chrome DevTools Protocol.
 | H7 | Wallet-unavailable messaging and error states | **PASS** | Connect pressed with no provider installed: `REFUSED No Xverse provider was found. Install the Xverse extension, or open this page inside the Xverse in-app browser. [WALLET_NOT_INSTALLED]` — fail-closed, actionable, not a silent no-op |
 | H8 | Landing-page demo arithmetic matches the confirmed sweep | **PASS** | Demo button exercised in the browser: 8 result lines, 601,214 sats in / 62,087 sats fee / 539,127 sats net — the confirmed on-chain figures |
 | H9 | Xverse disconnect/reconnect and wallet network switches | **NOT VERIFIED** | Requires the extension in a real browser profile. The code paths are covered by `tests/wallet.test.ts`. Cases M2 (disconnect/reconnect) and M3 (network switching) were exercised by the operator in M6 and reported working, but both are recorded as **PROVISIONAL PASS** in `docs/MANUAL_ACCEPTANCE.md`; a provisional result moves no gate, so this stays **NOT VERIFIED** until a checkable observation (versions, screenshot, exact messages) is recorded |
-| H10 | Scan pagination and large-wallet performance against a live wallet | **NOT VERIFIED** | Requires a funded ordinal wallet; the planner is measured in `docs/PERFORMANCE.md` |
+| H10 | Scan pagination and large-wallet performance against a live wallet | **NOT VERIFIED** | Requires a funded ordinal wallet; the planner is measured in `docs/PERFORMANCE.md`. The operator ran a live scan in M6 (case M4) and reported it working, recorded as **PROVISIONAL PASS** — but no `Pages read` figure was captured, so **crossing the provider's page size was never observed** and this gate stays open |
 
 ### Defect found and fixed during this pass
 
@@ -163,7 +163,7 @@ elements extending past the device width.
 | # | Requirement | Status | Evidence |
 | --- | --- | --- | --- |
 | J1 | A stranger can find the repo, read the code and understand the risks | **PASS** | The repository is public and topic-tagged; `README.md` leads with what the tool does, what it cannot detect and what it costs, and links `docs/RISK.md` and `docs/RELEASE_GATES.md`. This covers the artifact being usable and honest, not promotion, which has not happened |
-| J2 | A user connects Xverse, scans hundreds/thousands of inscriptions and sees gross BTC, fees and net output | **NOT VERIFIED** | Requires a live wallet and a funded ordinal wallet; synthetic only in this repo |
+| J2 | A user connects Xverse, scans hundreds/thousands of inscriptions and sees gross BTC, fees and net output | **NOT VERIFIED** | Requires a live wallet and a funded ordinal wallet; synthetic only in this repo. M6 cases M1 (connect) and M4 (scan) were reported working by the operator and are recorded as **PROVISIONAL PASS**, but with no chain, versions, screenshot or scan statistics — including whether the wallet held any inscription UTXO at all — so this gate stays open |
 | J3 | The user independently approves in Xverse and explicitly broadcasts, paying zero platform fees | **NOT VERIFIED** | Requires a live wallet; no platform fee exists in code or pricing |
 | J4 | The user can verify the TXID and its confirmation | **PASS** | *Check confirmation* action; verified on chain for the confirmed sweep |
 
@@ -206,13 +206,14 @@ but **unpublished** release candidate.
   repository.
 - **NOT VERIFIED (no evidence available here):** A11, B5, B6, C8, C9, E7, E11,
   G7, H9, H10, J2, J3, K9, K10.
-- **Re-checked in M6 (2026-10-08): no gate status changed.** The operator reported
-  cases M1 (connect), M2 (disconnect/reconnect) and M3 (network switching) working
-  in a real browser. Each is recorded as a **PROVISIONAL PASS** in
-  `docs/MANUAL_ACCEPTANCE.md` with the chain, versions, screenshot and exact
-  messages still outstanding, and a provisional result moves no gate — so **B5**,
-  **H9** and **J2** all stay **NOT VERIFIED**. **C5** already stood **PASS** on the
-  component behaviour and `tests/wallet.test.ts`, not on this run.
+- **Re-checked in M6 (2026-10-08): 4 cases operator-reported, no gate status
+  changed.** The operator reported cases M1 (connect), M2 (disconnect/reconnect),
+  M3 (network switching) and M4 (live scan) working in a real browser. Each is
+  recorded as a **PROVISIONAL PASS** in `docs/MANUAL_ACCEPTANCE.md` with the chain,
+  versions, screenshot, exact messages and scan figures still outstanding, and a
+  provisional result moves no gate — so **B5**, **H9**, **H10** and **J2** all stay
+  **NOT VERIFIED**. **C5** already stood **PASS** on the component behaviour and
+  `tests/wallet.test.ts`, not on this run.
 
 ### Unrestricted public Mainnet launch is blocked by
 
