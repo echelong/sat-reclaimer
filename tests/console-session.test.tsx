@@ -79,6 +79,21 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe('console stale state and concurrent wallet actions', () => {
+  it('does not sign a batch whose txid already had a submission attempt', async () => {
+    await click('Connect Xverse'); await click('Scan all inscriptions');
+    input('I understand').props.onChange?.({ target: { checked: true } });
+    input('Destination Bitcoin').props.onChange?.({ target: { value: OTHER_ADDRESS } });
+    await click('Review sweep');
+    input('Signing acknowledgement').props.onChange?.({ target: { value: 'SPEND AS BTC' } });
+    const sign = button('Sign + verify').props.onClick!;
+    const plan = planSweep({ utxos: scan.utxos, ordinals: { publicKeyHex: ORDINALS.internalPubKeyHex, address: ORDINALS.address },
+      destination: OTHER_ADDRESS, network: 'Signet', mainnetEnabled: false, feeRateSatVb: 2n });
+    const state = hooks.slots.find((slot) => typeof slot === 'object' && slot !== null && 'attempted' in slot) as broadcast.BroadcastState;
+    state.attempted.add(plan.batches[0].unsignedTxid);
+    sign();
+    expect(walletApi.sign).not.toHaveBeenCalled();
+    expect(button('Submission attempted').props.disabled).toBe(true);
+  });
   it('lets the owner choose individual outputs and invalidates an unsigned plan when fees change', async () => {
     await click('Connect Xverse'); await click('Scan all inscriptions');
     input('I understand').props.onChange?.({ target: { checked: true } });
@@ -138,7 +153,8 @@ describe('console stale state and concurrent wallet actions', () => {
 
 describe('recovery submission requires current explicit approval', () => {
   function loadRecovery() {
-    activeRender = () => ImportTransaction({ network: 'Signet', broadcastState: broadcast.createBroadcastState(),
+    const state = broadcast.createBroadcastState();
+    activeRender = () => ImportTransaction({ network: 'Signet', broadcastState: state,
       authorisation: { mainnetEnabled: false, mainnetBroadcastEnabled: false, signetBroadcastEnabled: true } });
     const plan = planSweep({ utxos: makeUtxos(1), ordinals: { publicKeyHex: ORDINALS.internalPubKeyHex, address: ORDINALS.address },
       destination: OTHER_ADDRESS, network: 'Signet', mainnetEnabled: false, feeRateSatVb: 2n });
@@ -161,6 +177,16 @@ describe('recovery submission requires current explicit approval', () => {
     expect(button('Broadcast imported').props.disabled).toBe(false);
     nodes(render()).find((node) => node.type === 'textarea')!.props.onChange?.({ target: { value: '00' } });
     expect(text(render())).not.toContain('Broadcast imported transaction');
+    expect(submit).not.toHaveBeenCalled();
+  });
+  it('checks an imported txid on its selected network without submitting it', async () => {
+    const submit = vi.spyOn(broadcast, 'broadcastRawTransaction');
+    const lookup = vi.spyOn(broadcast, 'checkTxidStatus').mockResolvedValue({ found: false, answered: true,
+      confirmed: false, blockHeight: null, endpoint: null, explorerUrl: null, detail: 'Not known; nothing submitted.' });
+    loadRecovery();
+    button('Check confirmation').props.onClick?.();
+    await vi.waitFor(() => expect(text(render())).toContain('Not known; nothing submitted.'));
+    expect(lookup).toHaveBeenCalledWith({ txid: expect.stringMatching(/^[a-f0-9]{64}$/), network: 'Signet' });
     expect(submit).not.toHaveBeenCalled();
   });
 });

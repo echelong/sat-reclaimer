@@ -10,6 +10,7 @@ import {
 } from '@/src/lib/imported-transaction';
 import {
   broadcastRawTransaction,
+  checkTxidStatus,
   broadcastUnlockHint,
   isBroadcastAuthorised,
   type BroadcastAuthorisation,
@@ -64,6 +65,7 @@ export function ImportTransaction({
     report !== null &&
     authorizedTxid === report.txid &&
     phraseOk &&
+    !broadcastState.attempted.has(report.txid) &&
     outcome === null;
 
   function reset() {
@@ -143,6 +145,22 @@ export function ImportTransaction({
     }
   }
 
+  async function onCheckStatus() {
+    if (!report || operationInFlight.current) return;
+    operationInFlight.current = true;
+    setBusy(true);
+    setFailure('');
+    try {
+      const result = await checkTxidStatus({ txid: report.txid, network });
+      setStatus(result.detail);
+    } catch (error) {
+      setFailure(errorMessage(error));
+    } finally {
+      operationInFlight.current = false;
+      setBusy(false);
+    }
+  }
+
   return (
     <section className="cx-panel">
       <div className="cx-step">
@@ -197,6 +215,12 @@ export function ImportTransaction({
 
       {report && (
         <>
+          <div className="cx-actions">
+            <button className="btn btn-ghost" disabled={busy} onClick={onCheckStatus}>Check confirmation</button>
+          </div>
+          {broadcastState.attempted.has(report.txid) && !outcome && (
+            <p className="cx-note" role="status">Submission was attempted for this txid. Check confirmation; this session will not submit it again.</p>
+          )}
           <dl className="cx-dl cx-dl-grid">
             <div>
               <dt>TXID</dt>

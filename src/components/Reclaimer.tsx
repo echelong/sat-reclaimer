@@ -267,7 +267,7 @@ export function Reclaimer() {
   }
 
   function onSign(batch: BuiltBatch) {
-    if (!wallet || !inputScriptHex || !sweep || !canSign || outcomes[batch.index]) return;
+    if (!wallet || !inputScriptHex || !sweep || !canSign || outcomes[batch.index] || broadcastState.attempted.has(batch.unsignedTxid)) return;
     void run(async () => {
       let signed: string;
       try {
@@ -1061,8 +1061,8 @@ export function Reclaimer() {
                     )}
 
                     <div className="cx-actions">
-                      <button className="btn btn-primary" onClick={() => onSign(batch)} disabled={busy || !canSign || outcomes[batch.index] !== undefined}>
-                        {outcomes[batch.index] ? 'Submitted' : report ? 'Sign again' : 'Sign + verify'}
+                      <button className="btn btn-primary" onClick={() => onSign(batch)} disabled={busy || !canSign || broadcastState.attempted.has(batch.unsignedTxid)}>
+                        {broadcastState.attempted.has(batch.unsignedTxid) ? 'Submission attempted' : report ? 'Sign again' : 'Sign + verify'}
                       </button>
                       <button
                         className="btn btn-magenta"
@@ -1074,6 +1074,7 @@ export function Reclaimer() {
                           !report.txid ||
                           confirmedTxids[batch.index] !== report.txid ||
                           outcomes[batch.index] !== undefined ||
+                          broadcastState.attempted.has(report.txid) ||
                           !isBroadcastAuthorised(batch.network, BROADCAST_AUTHORISATION)
                         }
                         title={
@@ -1084,7 +1085,7 @@ export function Reclaimer() {
                       >
                         {batch.network === 'Mainnet' ? 'Broadcast Mainnet Transaction' : 'Broadcast transaction'}
                       </button>
-                      {outcomes[batch.index] && (
+                      {report?.ok && report.txid && (
                         <button
                           className="btn btn-ghost"
                           onClick={() => onCheckStatus(batch)}
