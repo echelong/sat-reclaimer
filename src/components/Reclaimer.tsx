@@ -352,7 +352,10 @@ export function Reclaimer() {
   const walletChip = wallet ? `${wallet.walletType ?? 'Wallet'} · ${wallet.walletNetwork}` : 'Disconnected';
 
   return (
-    <main className="console" id="console">
+    <main className="console" id="console"
+      data-mainnet-enabled={String(MAINNET_ENABLED)}
+      data-mainnet-broadcast-enabled={String(BROADCAST_AUTHORISATION.mainnetBroadcastEnabled)}
+      data-signet-broadcast-enabled={String(BROADCAST_AUTHORISATION.signetBroadcastEnabled)}>
       <div className="console-wrap">
         <header className="console-head">
           <span className="kicker">Sweep All</span>
