@@ -52,7 +52,7 @@ Mainnet broadcasting in any public deployment, while those gates are open.
 
 ## Current priority
 
-M7 — final acceptance and the `v0.1.0-rc.1` release candidate. The repository is
+M9 — local reliability and the prepared `v0.1.0-rc.2` release candidate. The repository is
 published under MIT at `github.com/echelong/sat-reclaimer` and is distributed as a
 **locally runnable** app: clone it, run `pnpm local`, connect Xverse. There is no
 hosted site, no domain and no account, and none is wanted.
@@ -62,10 +62,11 @@ formally verified:** no chain, browser/Xverse version, redacted screenshot, scan
 figure, accepted input count or txid was supplied. Those reports are recorded as
 `PROVISIONAL PASS` in `docs/MANUAL_ACCEPTANCE.md` and **they move no release gate**.
 The artifacts that would change that are listed there under *Evidence still
-outstanding*. The M9 **txid and its network** is the item that matters most, because
-it is the only one a third party can check without trusting the reporter.
+outstanding*. On 2026-10-09 the owner clarified that the newer transaction was
+in the mempool and requested no lookup. Its TXID and network remain unrecorded;
+no new confirmation or independent chain evidence is claimed.
 
-Remaining work, none of it doable from this machine:
+Remaining external acceptance evidence:
 
 1. The live-wallet evidence above (gates B5, B6, C9, H9, H10, J2, J3). Item 3 of the
    list in `docs/MANUAL_ACCEPTANCE.md` is what closes H10/J2, and item 4 is what
@@ -79,7 +80,7 @@ Remaining work, none of it doable from this machine:
 5. A decision on gate G7 (staging deployment), which is proposed for removal rather
    than quietly converted to PASS — local-first distribution has no staging surface.
 
-`docs/RELEASE_NOTES_v0.1.0-rc.1.md` is prepared and **not published**: do not tag
+`docs/RELEASE_NOTES_v0.1.0-rc.2.md` is prepared and **not published**: do not tag
 it or create a GitHub release while the items above are open, and do not deploy a
 hosted site — distribution is the repository itself.
 

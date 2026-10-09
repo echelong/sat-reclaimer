@@ -215,3 +215,48 @@ pnpm build
 
 `tests/security-regressions.test.ts` names every finding above, so a refactor that
 reopens one fails the suite rather than the field.
+
+## M9 continuation — internal findings, 2026-10-09
+
+These changes are internal validation, not an external audit.
+
+- **Silent fee rounding:** `1.5 sat/vB` became `2 sat/vB` in the console.
+  `parseFeeRate` now rejects fractional input instead of changing the requested
+  rate. Regression: `tests/sweep-session.test.ts` and console-handler tests.
+- **Repartitioning signed inputs:** a later payload rejection rebuilt every
+  batch and discarded earlier signed reports and broadcast outcomes.
+  `replanAfterSizeRejection` refuses once any signing report exists, retaining
+  recoverable bytes. An unsigned replan clears the signing phrase and requires
+  review of the newly measured aggregate fee. Cancellation and timeout cannot
+  trigger this fallback. Regression: sweep-session and wallet tests.
+- **Stale state:** changing network, failed reconnect, failed rescan or failed
+  provider disconnect could leave old wallet/scan data usable. These paths now
+  clear local state before requesting new data; recovery authorization resets
+  when its network changes. A synchronous operation lock prevents double
+  connects before React renders disabled controls. Regression: console tests.
+- **Recovery authorization:** the import handler now enforces its checkbox,
+  phrase, inspection and busy guards at invocation, and editing raw bytes
+  clears the prior report and authorization. File-read failures are reported.
+- **Audit failure treated as success:** a valid registry-error JSON response
+  lacked `advisories` and was interpreted as an empty audit. The gate now
+  requires a complete report and advisory details for reported high/critical
+  findings. Regression: `tests/audit-allowlist.test.ts`.
+
+Signed transactions are spendable authorizations, even before submission. Export
+files contain no private keys but must be handled deliberately. After a submitted
+or ambiguous transaction, look up the txid before rebuilding over its inputs.
+
+- **Incomplete scan mislabeled complete:** `Number(null)` interpreted an unknown
+  provider total as zero, stopping after the first page. Null/absent totals now
+  require an explicit empty page. Invalid totals fail; changing totals or more
+  rows than the reported total mark the scan incomplete. Regressions cover these
+  cases in `tests/ordinals.test.ts`.
+
+- **Automatic second POST after ambiguity:** the broadcast loop tried the second
+  endpoint after a transport failure at the first. Its single-endpoint timeout
+  test did not exercise this. M9 replaces submission fallback with independent
+  GET status lookups and records all attempted txids, including failed and
+  ambiguous attempts, for the session. Repeated POSTs and re-signing attempted
+  native batches are refused; status checking remains available in both flows.
+  Regression: multi-endpoint 503 recovery plus timeout/503/rejection/txid-mismatch
+  attempt-ledger cases in `tests/broadcast.test.ts` and console-handler tests.

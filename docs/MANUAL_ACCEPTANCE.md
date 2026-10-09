@@ -226,8 +226,8 @@ address type. Record that as a PASS for the refusal, not a FAIL.
   request is bound to the address the wallet returns, so a leftover sweep cannot
   be signed by a different wallet — but record what the screen actually showed.
   `onDisconnect` clears `wallet`, the input script, the scan, the selection, the
-  sweep and the Mainnet acknowledgement; it does not clear the signing phrase, but
-  the phrase field is not rendered once the sweep is gone.
+  sweep and the Mainnet acknowledgement; M9 also clears all reports, authorizations and the signing phrase, even if the
+  provider disconnect fails.
 - After **reconnecting** (not merely disconnecting), `onConnect` clears the
   destructive acknowledgement, the Mainnet acknowledgement and the signing phrase,
   so the phrase field is empty again and the acknowledgement is unchecked. The
@@ -266,9 +266,8 @@ address type. Record that as a PASS for the refusal, not a FAIL.
 - A network mismatch must never be silently accepted and must never produce a
   transaction.
 - After switching Xverse, connecting succeeds and **Wallet reports network** matches.
-- If Mainnet is disabled in the build, selecting `Mainnet` shows
-  `Mainnet (locked in code)` in the selector and refuses with `[MAINNET_DISABLED]`
-  rather than attempting anything.
+- If Mainnet is disabled in the build, `Mainnet (locked in code)` is a disabled option. The engine also refuses
+  Mainnet with `[MAINNET_DISABLED]` if reached directly.
 
 | Result (PASS/FAIL/BLOCKED) | Evidence (txid, screenshot, console text) |
 | --- | --- |
@@ -331,7 +330,7 @@ that can close B6, and it cannot be closed by a synthetic run.**
 
 1. Acknowledge the destructive warning, then **Select all N UTXOs**.
 2. Enter the destination address and a fee rate of `1`.
-3. Press **Sweep all** and read step 05's headline: either
+3. Press **Review sweep** and read step 05's headline: either
    `N UTXOs → 1 Bitcoin transaction → 1 destination` or the multi-batch form.
 4. Record the pre-sign review figures: input count, total input sats, destination
    output sats, mining fee, fee as a percentage, vsize and weight.
@@ -340,9 +339,10 @@ that can close B6, and it cannot be closed by a synthetic run.**
    present the full input list, does it accept the payload, does it refuse, does it
    time out, or does the extension become unresponsive?
 7. If Xverse refuses for a size reason, record the exact wording, then observe the
-   console's automatic re-plan: it must halve the largest batch and report
-   `Xverse rejected the N-input transaction as too large. Re-planned the same N
-   UTXOs into M transactions of up to K inputs each … Nothing was signed.`
+   console's fallback: an entirely unsigned plan is repartitioned with a new fee
+   review and an empty signing phrase. If any earlier batch has a signing report,
+   the plan and its verified recovery bytes must remain intact and repartitioning
+   must be refused. Record which case occurred.
 8. Sign and verify the remaining batches one at a time.
 
 **Expected result**
@@ -350,8 +350,9 @@ that can close B6, and it cannot be closed by a synthetic run.**
 - With Xverse's approval, the signed PSBT is verified locally per batch and the
   final review block appears with input count, input sats, output sats, mining fee,
   fee percentage, vsize, destination and txid.
-- If Xverse refuses the payload, the console re-plans rather than failing, and the
-  re-plan preserves the total: the sum of the batches must cover **exactly** the
+- If Xverse refuses the payload before any batch was signed, the console re-plans
+  and requires a new phrase. After an earlier signing report, it preserves the plan
+  and refuses repartitioning. An unsigned re-plan preserves the input total: the sum of the batches must cover **exactly** the
   selected UTXO set, with no input lost and none signed twice.
 - Every batch must verify on its own. A `[VERIFICATION_FAILED]` on any batch means
   **do not broadcast** and is a critical finding.
@@ -597,3 +598,12 @@ moves a gate.
 - If anything in this suite reveals a way to build, sign, verify or broadcast
   without the gates described above, stop and report it privately under
   [`SECURITY.md`](../SECURITY.md) rather than in a public issue.
+
+## M9 continuation operator update (2026-10-09)
+
+The owner clarified that the newer transaction was **in the mempool** and reports
+that it worked well. The owner requested no further lookup. No TXID, network or
+confirmation artifact was supplied, and no lookup was performed. This is an
+operator observation of mempool presence, **not independently verified
+confirmation**. Existing provisional case results and release-gate counts remain
+unchanged. No additional signing or broadcasting was initiated.

@@ -6,7 +6,7 @@ requests described in [`/privacy`](../app/privacy/page.tsx).
 
 Two ways to do this:
 
-- **[Simple](#simple-installation)** — four commands, one of which is a launcher
+- **[Simple](#simple-installation)** — five commands, one of which is a launcher
   that asks what you want.
 - **[Manual](#manual-installation)** — every step spelled out, for when you want
   to know exactly what is running, or when the simple path does not fit.
@@ -28,21 +28,21 @@ no database, no server, no Docker.
 | macOS | `brew install node@22` | `corepack enable` |
 | Windows | `winget install OpenJS.NodeJS.LTS` | `corepack enable` |
 
-**Support status, stated plainly.** Only **Linux (Fedora 43, x86_64)** has been
-installed, built, run and exercised end to end. **Windows and macOS are NOT
-VERIFIED**: no machine was available on which to test them, so the commands above
+**Support status.** Linux (Fedora 43 historically; Fedora 44 in M9, x86_64)
+has installation and startup evidence. Live Xverse and visual acceptance on the M9
+build remain unverified. **Windows and macOS are NOT VERIFIED**: no machine was available on which to test them, so the commands above
 are the *expected* ones for those systems, not a tested result. Nothing in the
 toolchain is platform-specific — it is Node.js and `pnpm`, and
-`scripts/start-local.mjs` handles the Windows `pnpm.cmd` shim — but an expectation
+`scripts/start-local.mjs` invokes the Next CLI through Node without a package-manager shell shim — but an expectation
 is not a test. Gates K9/K10 in [`docs/RELEASE_GATES.md`](RELEASE_GATES.md) stay
 open until someone runs the steps above on those systems. If you do, an issue with
 your OS version, Node version and the output of `pnpm local:check` is genuinely
 useful.
 
-`corepack` ships with Node and reads this repository's pinned
+`corepack`, when installed, reads this repository's pinned
 `packageManager: pnpm@10.17.1`, so doing it this way gets you the exact pnpm the
 project was tested with rather than whatever is newest. If you prefer to install
-pnpm yourself, `npm install -g pnpm@10` works too, or use
+pnpm yourself, `npm install -g pnpm@10.17.1` works too, or use
 `npm install --global corepack`.
 
 On Linux you can avoid a system-wide install entirely: download the Node tarball
@@ -65,16 +65,16 @@ nothing, and explains the fix for anything missing on your platform.
 git clone https://github.com/echelong/sat-reclaimer.git
 cd sat-reclaimer
 corepack enable          # one-time; makes pnpm available at the pinned version
-pnpm install             # installs dependencies, nothing global
+pnpm install --frozen-lockfile # installs exactly the locked dependencies
 pnpm local               # asks which mode to run in, then starts
 ```
 
 Then open <http://127.0.0.1:3000>, go to **/app**, and follow the console.
 
 `pnpm local` is a launcher, not a magic script. It is
-[`scripts/start-local.mjs`](../scripts/start-local.mjs), about 250 lines, and it
+[`scripts/start-local.mjs`](../scripts/start-local.mjs), and it
 does three things: prints exactly which capabilities it is about to enable, sets
-the three `NEXT_PUBLIC_*` flags accordingly, and runs the normal Next.js dev
+the three `NEXT_PUBLIC_*` flags accordingly, and runs a freshly built Next.js production
 server bound to `127.0.0.1`. Read it before you run it if you like — that is the
 point of it being a file in the repository rather than a piped installer.
 
@@ -107,15 +107,16 @@ git clone https://github.com/echelong/sat-reclaimer.git
 cd sat-reclaimer
 corepack enable
 pnpm install --frozen-lockfile
-pnpm dev                 # http://127.0.0.1:3000
+pnpm local --mode=plan    # build and serve safely on http://127.0.0.1:3000
 ```
 
 `--frozen-lockfile` installs exactly the versions in `pnpm-lock.yaml` and fails
 rather than silently resolving something else. That is what CI uses.
 
-`pnpm dev` and `pnpm start` do the same thing as the launcher with every flag
-off: safe mode. To change the mode yourself, set the environment variables the
-launcher would have set:
+`pnpm dev` reads `.env.local`, and `pnpm start` serves flags baked into the last
+build. Neither overrides them with safe defaults. Use `pnpm local` for normal
+operation: it explicitly overrides all three flags and rebuilds every time.
+Contributors who choose the manual development path must inspect their environment:
 
 ```bash
 # Signet/Testnet, broadcasting allowed
@@ -131,18 +132,23 @@ NEXT_PUBLIC_ENABLE_MAINNET=true NEXT_PUBLIC_ENABLE_MAINNET_BROADCAST=true pnpm d
 Each flag is off unless it is exactly the string `true`. Anything else — unset,
 `1`, `TRUE`, a typo — is off.
 
-### A production build instead of the dev server
+### Production mode and contributor development mode
 
 ```bash
 pnpm build
 pnpm start               # serves the built app on 127.0.0.1:3000
 ```
 
-Or in one step, which builds first and only starts if the build succeeded:
+`pnpm local` uses production mode by default, building first with the selected
+flags and starting only after a successful build. This prevents reuse of a bundle
+with another mode baked in:
 
 ```bash
-pnpm local --mode=plan --prod
+pnpm local --mode=plan
 ```
+
+For hot reload during development, use `pnpm local --mode=plan --dev`.
+Stop with Ctrl+C; the launcher forwards shutdown to the server.
 
 ### Why these are environment variables
 
@@ -181,7 +187,7 @@ send.
 
 | Symptom | Cause and fix |
 | --- | --- |
-| `pnpm: command not found` | Run `corepack enable`, or `npm install -g pnpm@10`. |
+| `pnpm: command not found` | Run `corepack enable`, or `npm install -g pnpm@10.17.1`. |
 | `Unsupported engine` / Node too old | Install Node 22+ (see the table above), then re-run. |
 | Port already in use | `PORT=3001 pnpm local`, and restart the server after changing modes. |
 | Mainnet still shows `Mainnet (locked in code)` | The flags are baked in at build time. Stop the server and restart it in the mode you want; editing the page is not enough. |
@@ -190,7 +196,7 @@ send.
 
 ## Two limits worth knowing before you start
 
-- **A refresh loses an unsigned transaction.** Signed bytes live in browser
+- **A refresh loses a signed transaction.** Signed bytes live in browser
   memory only and are never written to disk or sent anywhere. Use *Download
   verified .hex* before you refresh or close the tab; the *Recover a saved
   transaction* panel can bring that file back and submit it without signing
@@ -199,3 +205,7 @@ send.
 - **This is an unaudited beta.** No independent security review has been
   performed. [`docs/RELEASE_GATES.md`](RELEASE_GATES.md) states exactly what is
   proven and what is not, rather than a summary that sounds reassuring.
+
+If `corepack` is absent (some Node distributions omit it), install the exact
+manager with `npm install --global pnpm@10.17.1` using a user-owned Node installation.
+Do not run the app or its installer with administrator privileges.

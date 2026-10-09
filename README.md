@@ -17,7 +17,7 @@ does and does not do.
 - **[Local setup](docs/LOCAL_SETUP.md)** — how to install and run it on your own machine.
 - **[Risk disclosure](docs/RISK.md)** — read this before Mainnet.
 - **[Release gates](docs/RELEASE_GATES.md)** — exactly what is proven and what is not.
-- **[Release candidate v0.1.0-rc.1](docs/RELEASE_NOTES_v0.1.0-rc.1.md)** — prepared, **not published**; source-only.
+- **[Release candidate v0.1.0-rc.2](docs/RELEASE_NOTES_v0.1.0-rc.2.md)** — prepared, **not published**; source-only.
 - **License:** [MIT](LICENSE)
 
 ![The SAT//RECLAIMER landing page](docs/screenshots/landing.png)
@@ -105,8 +105,8 @@ administrator rights.
 git clone https://github.com/echelong/sat-reclaimer.git
 cd sat-reclaimer
 corepack enable      # use the pinned pnpm 10.17.1 from packageManager
-pnpm install
-pnpm local           # asks which mode to run in, then serves 127.0.0.1:3000
+pnpm install --frozen-lockfile
+pnpm local           # asks which mode, builds production, then serves 127.0.0.1:3000
 ```
 
 Then open <http://127.0.0.1:3000> (landing) or <http://127.0.0.1:3000/app> (the
