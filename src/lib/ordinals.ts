@@ -463,6 +463,7 @@ export type PaginationOptions = {
   limit?: number;
   maxPages?: number;
   maxRows?: number;
+  onProgress?: (progress: { pagesFetched: number; retrievedCount: number; reportedTotal: number | null }) => void;
 };
 
 export type PaginationResult = {
@@ -578,6 +579,7 @@ export async function fetchAllInscriptions(
     }
 
     offset += pageRows.length;
+    options.onProgress?.({ pagesFetched: pages, retrievedCount: rows.length, reportedTotal });
 
     if (reportedTotal !== null && rows.length >= reportedTotal) break;
   }

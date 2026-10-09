@@ -14,7 +14,7 @@ import {
 } from 'sats-connect';
 import { assertNetworkAllowed, deriveOrdinalTaproot } from './bitcoin';
 import { ReclaimerError, errorMessage } from './errors';
-import { fetchAllInscriptions, type InscriptionsPage } from './ordinals';
+import { fetchAllInscriptions, type InscriptionsPage, type PaginationOptions } from './ordinals';
 import type {
   AppNetwork,
   ConnectedWallet,
@@ -149,6 +149,7 @@ function mapTransportError(error: unknown, label: string): ReclaimerError {
  * to the minimum number of sequential batches — never to weaken validation.
  */
 export function isWalletSizeLimitError(error: unknown): boolean {
+  if (error instanceof ReclaimerError && error.code !== 'WALLET_ERROR') return false;
   const message = errorMessage(error);
   return /too\s*(many|large)|payload|entity too large|exceeds?\s+.*(limit|size|maximum)|maximum\s+.*(inputs|size|psbt)|input\s+limit|psbt\s+(too\s+)?(large|big)|request\s+too\s+large|413/i.test(
     message,
@@ -287,13 +288,14 @@ export async function scanOrdinals(args: {
   ordinalsAddress: string;
   mainnetEnabled: boolean;
   network: AppNetwork;
+  onProgress?: PaginationOptions['onProgress'];
 }): Promise<ScanResult> {
   assertNetworkAllowed(args.network, args.mainnetEnabled);
 
   const pagination = await fetchAllInscriptions(async ({ offset, limit }) => {
     const page = await call('ord_getInscriptions', { offset, limit }, READ_TIMEOUT_MS);
     return page as InscriptionsPage;
-  });
+  }, { onProgress: args.onProgress });
 
   const reduction = scanInscriptionUtxos(pagination.rows, {
     expectedAddress: args.ordinalsAddress,

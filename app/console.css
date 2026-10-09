@@ -380,7 +380,7 @@
 
 .cx-check {
   display: grid;
-  grid-template-columns: 20px 1fr;
+  grid-template-columns: 20px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
   padding: 14px 16px;

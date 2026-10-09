@@ -433,3 +433,27 @@ describe('wallet size-limit classification', () => {
     }
   });
 });
+
+
+describe('payload fallback must not reinterpret wallet cancellation', () => {
+  it('does not treat cancellation containing a payload-related word as a size refusal', () => {
+    expect(isWalletSizeLimitError(new ReclaimerError('WALLET_USER_REJECTED', 'User rejected large payload'))).toBe(false);
+    expect(isWalletSizeLimitError(new ReclaimerError('WALLET_TIMEOUT', 'PSBT payload timeout'))).toBe(false);
+    expect(isWalletSizeLimitError(new ReclaimerError('WALLET_ERROR', 'PSBT payload too large'))).toBe(true);
+  });
+});
+
+
+describe('scan progress', () => {
+  it('reports unique rows and pages while fetching a capped provider response', async () => {
+    requestMock.mockResolvedValueOnce({ status: 'success', result: { total: 2, inscriptions: [{ inscriptionId: 'one', output: '1'.padStart(64, '0') + ':0', postage: '1000' }] } });
+    requestMock.mockResolvedValueOnce({ status: 'success', result: { total: 2, inscriptions: [{ inscriptionId: 'two', output: '2'.padStart(64, '0') + ':0', postage: '1000' }] } });
+    const progress = vi.fn();
+    const result = await scanOrdinals({ ordinalsAddress: ORDINALS.address, network: 'Signet', mainnetEnabled: false, onProgress: progress });
+    expect(result.complete).toBe(true);
+    expect(progress.mock.calls.map(([value]) => value)).toEqual([
+      { pagesFetched: 1, retrievedCount: 1, reportedTotal: 2 },
+      { pagesFetched: 2, retrievedCount: 2, reportedTotal: 2 },
+    ]);
+  });
+});

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   APP_NETWORKS,
   MAX_FEE_RATE_SAT_VB,
@@ -18,6 +18,7 @@ import {
   sumSats,
 } from '@/src/lib/ordinals';
 import { expectationFor, planSweep, type SweepPlan } from '@/src/lib/psbt';
+import { parseFeeRate, replanAfterSizeRejection } from '@/src/lib/sweep-session';
 import { verifySignedPsbt } from '@/src/lib/verify';
 import {
   broadcastRawTransaction,
@@ -108,6 +109,7 @@ export function Reclaimer() {
   const [inputScriptHex, setInputScriptHex] = useState<string | null>(null);
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [selectedOutpoints, setSelectedOutpoints] = useState<string[]>([]);
+  const [selectionPage, setSelectionPage] = useState(0);
   const [acknowledged, setAcknowledged] = useState(false);
   const [mainnetAcknowledged, setMainnetAcknowledged] = useState(false);
   const [phrase, setPhrase] = useState('');
@@ -119,6 +121,7 @@ export function Reclaimer() {
   const [confirmedTxids, setConfirmedTxids] = useState<Record<number, string>>({});
   const [txidStatuses, setTxidStatuses] = useState<Record<number, TxidStatus>>({});
   const [broadcastState] = useState(createBroadcastState);
+  const operationInFlight = useRef(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
   const [failure, setFailure] = useState('');
@@ -133,9 +136,12 @@ export function Reclaimer() {
   const selectedInscriptions = useMemo(() => countInscriptions(selectedUtxos), [selectedUtxos]);
 
   const allSelected = scan !== null && scan.utxos.length > 0 && selectedUtxos.length === scan.utxos.length;
-  const canSign = phrase === ACKNOWLEDGEMENT_PHRASE && (!mainnetWallet || mainnetAcknowledged);
+  const hasSignedBatches = Object.keys(reports).length > 0;
+  const canSign = acknowledged && phrase === ACKNOWLEDGEMENT_PHRASE && (!mainnetWallet || mainnetAcknowledged);
 
   async function run(action: () => Promise<void> | void) {
+    if (operationInFlight.current) return;
+    operationInFlight.current = true;
     setBusy(true);
     setFailure('');
     setStatus('');
@@ -145,12 +151,34 @@ export function Reclaimer() {
       const hint = error instanceof ReclaimerError ? ` [${error.code}]` : '';
       setFailure(`${errorMessage(error)}${hint}`);
     } finally {
+      operationInFlight.current = false;
       setBusy(false);
     }
   }
 
+  function clearPlan() {
+    setSweep(null);
+    setReports({});
+    setOutcomes({});
+    setConfirmedTxids({});
+    setTxidStatuses({});
+    setPhrase('');
+  }
+
+  function clearWalletState() {
+    setWallet(null);
+    setInputScriptHex(null);
+    setScan(null);
+    setSelectedOutpoints([]);
+    setSelectionPage(0);
+    setAcknowledged(false);
+    setMainnetAcknowledged(false);
+    clearPlan();
+  }
+
   function onConnect() {
     void run(async () => {
+      clearWalletState();
       const connected = await connectXverse({ network, mainnetEnabled: MAINNET_ENABLED });
       const taproot = deriveOrdinalTaproot({
         publicKeyHex: connected.ordinals.publicKey,
@@ -159,16 +187,6 @@ export function Reclaimer() {
       });
       setWallet(connected);
       setInputScriptHex(taproot.scriptHex);
-      setScan(null);
-      setSelectedOutpoints([]);
-      setAcknowledged(false);
-      setMainnetAcknowledged(false);
-      setPhrase('');
-      setSweep(null);
-      setReports({});
-      setOutcomes({});
-      setConfirmedTxids({});
-      setTxidStatuses({});
       setStatus(
         `Connected to ${connected.walletType ?? 'wallet'} on ${connected.walletNetwork}. Address and public key agree.`,
       );
@@ -177,13 +195,9 @@ export function Reclaimer() {
 
   function onDisconnect() {
     void run(async () => {
+      // Local state must be cleared even if the provider refuses disconnect.
+      clearWalletState();
       await disconnectXverse();
-      setWallet(null);
-      setInputScriptHex(null);
-      setScan(null);
-      setSelectedOutpoints([]);
-      setSweep(null);
-      setMainnetAcknowledged(false);
       setStatus('Disconnected.');
     });
   }
@@ -191,10 +205,20 @@ export function Reclaimer() {
   function onScan() {
     if (!wallet) return;
     void run(async () => {
+      setScan(null);
+      setSelectedOutpoints([]);
+      setSelectionPage(0);
+      setAcknowledged(false);
+      setMainnetAcknowledged(false);
+      clearPlan();
+      setStatus('Reading inscription pages from Xverse…');
       const result = await scanOrdinals({
         ordinalsAddress: wallet.ordinals.address,
         network: wallet.requestedNetwork,
         mainnetEnabled: MAINNET_ENABLED,
+        onProgress: ({ pagesFetched, retrievedCount, reportedTotal }) => setStatus(
+          `Scanning: ${num(retrievedCount)} of ${reportedTotal === null ? 'unknown total' : num(reportedTotal)} inscriptions, ${num(pagesFetched)} pages read…`,
+        ),
       });
       setScan(result);
       setSelectedOutpoints(result.utxos.map((utxo) => utxo.outpoint));
@@ -212,16 +236,10 @@ export function Reclaimer() {
   }
 
   function onSweepAll() {
-    if (!wallet || !inputScriptHex || !scan) return;
+    if (!wallet || !inputScriptHex || !scan || !acknowledged || hasSignedBatches || (mainnetWallet && !mainnetAcknowledged)) return;
     void run(async () => {
       assertScanComplete(scan);
-      const parsedFeeRate = Number(feeRate);
-      if (!Number.isFinite(parsedFeeRate) || parsedFeeRate < 1) {
-        throw new ReclaimerError('INVALID_FEE_RATE', 'Enter a fee rate of at least 1 sat/vB.');
-      }
-      if (BigInt(Math.round(parsedFeeRate)) > MAX_FEE_RATE_SAT_VB) {
-        throw new ReclaimerError('INVALID_FEE_RATE', `Refusing a fee rate above ${MAX_FEE_RATE_SAT_VB} sat/vB.`);
-      }
+      const parsedFeeRate = parseFeeRate(feeRate);
       const authorised = new Set(selectedOutpoints);
       const chosen = scan.utxos.filter((utxo) => authorised.has(utxo.outpoint));
       if (chosen.length === 0) {
@@ -231,7 +249,7 @@ export function Reclaimer() {
         utxos: chosen,
         ordinals: { publicKeyHex: wallet.ordinals.publicKey, address: wallet.ordinals.address },
         destination,
-        feeRateSatVb: BigInt(Math.round(parsedFeeRate)),
+        feeRateSatVb: parsedFeeRate,
         network: wallet.requestedNetwork,
         mainnetEnabled: MAINNET_ENABLED,
       });
@@ -249,7 +267,7 @@ export function Reclaimer() {
   }
 
   function onSign(batch: BuiltBatch) {
-    if (!wallet || !inputScriptHex || !sweep) return;
+    if (!wallet || !inputScriptHex || !sweep || !canSign || outcomes[batch.index]) return;
     void run(async () => {
       let signed: string;
       try {
@@ -262,39 +280,19 @@ export function Reclaimer() {
         });
         signed = result.psbt;
       } catch (error) {
-        // Xverse has a practical PSBT/signing payload limit. If one large
-        // transaction is refused for a size/input reason, re-plan the same
-        // wallet into the minimum number of smaller batches. No validation is
-        // relaxed to make this pass.
-        // Halve the largest batch and try again. This repeats as long as the
-        // wallet keeps refusing a payload that is still bigger than one input,
-        // so a wallet with a much lower practical limit than the relay policy
-        // still reaches a single Sweep All workflow. Every re-plan rebuilds and
-        // re-measures the transactions from scratch; no validation is relaxed.
-        const largestBatch = sweep.batches.reduce((max, entry) => Math.max(max, entry.utxos.length), 0);
-        if (isWalletSizeLimitError(error) && largestBatch > 1) {
-          const smaller = Math.max(1, Math.floor(largestBatch / 2));
-          const replanned = planSweep({
-            utxos: sweep.batches.flatMap((entry) => entry.utxos),
-            ordinals: { publicKeyHex: wallet.ordinals.publicKey, address: wallet.ordinals.address },
-            destination: sweep.destination,
-            feeRateSatVb: sweep.feeRateSatVb,
-            network: sweep.network,
-            mainnetEnabled: MAINNET_ENABLED,
-            maxInputsPerBatch: smaller,
-          });
+        if (isWalletSizeLimitError(error)) {
+          const replanned = replanAfterSizeRejection({ sweep, reports, wallet, mainnetEnabled: MAINNET_ENABLED });
           setSweep(replanned);
-          setReports({});
-          setOutcomes({});
+          setPhrase('');
           setConfirmedTxids({});
-          setTxidStatuses({});
           setStatus(
-            `Xverse rejected the ${num(batch.utxos.length)}-input transaction as too large. Re-planned the same ${num(replanned.inputCount)} UTXOs into ${num(replanned.batchCount)} transactions of up to ${num(smaller)} inputs each (fee ${sats(replanned.feeSats)} total). Nothing was signed. Sign batch 1 of ${num(replanned.batchCount)}.`,
+            `Xverse rejected the ${num(batch.utxos.length)}-input transaction as too large. Re-planned ${num(replanned.inputCount)} UTXOs into ${num(replanned.batchCount)} transactions (fee ${sats(replanned.feeSats)} total). Review the new fees and type the signing phrase again. Nothing was signed by this request.`,
           );
           return;
         }
         throw error;
       }
+      setConfirmedTxids((current) => ({ ...current, [batch.index]: '' }));
       const report = verifySignedPsbt(signed, expectationFor(batch, inputScriptHex));
       setReports((current) => ({ ...current, [batch.index]: report }));
       setStatus(
@@ -446,11 +444,16 @@ export function Reclaimer() {
               <span>Network</span>
               <select
                 value={network}
-                onChange={(event) => setNetwork(event.target.value as AppNetwork)}
+                onChange={(event) => {
+                  clearWalletState();
+                  setNetwork(event.target.value as AppNetwork);
+                  setStatus('Network changed. Reconnect Xverse and scan again.');
+                  setFailure('');
+                }}
                 disabled={busy}
               >
                 {APP_NETWORKS.map((option) => (
-                  <option key={option} value={option}>
+                  <option key={option} value={option} disabled={option === 'Mainnet' && !MAINNET_ENABLED}>
                     {option === 'Mainnet'
                       ? MAINNET_ENABLED
                         ? 'MAINNET — REAL BTC'
@@ -618,9 +621,9 @@ export function Reclaimer() {
               checked={acknowledged}
               onChange={(event) => {
                 setAcknowledged(event.target.checked);
-                if (!event.target.checked) setSelectedOutpoints([]);
+                if (!event.target.checked && !hasSignedBatches) { setSelectedOutpoints([]); clearPlan(); }
               }}
-              disabled={!scan}
+              disabled={!scan || busy}
             />
             <span>{DESTRUCTIVE_ACKNOWLEDGEMENT}</span>
           </label>
@@ -631,7 +634,7 @@ export function Reclaimer() {
                 type="checkbox"
                 checked={mainnetAcknowledged}
                 onChange={(event) => setMainnetAcknowledged(event.target.checked)}
-                disabled={!scan}
+                disabled={!scan || busy}
               />
               <span>
                 <strong>MAINNET — REAL BTC.</strong> I authorize a Mainnet sweep of real bitcoin. I
@@ -646,15 +649,45 @@ export function Reclaimer() {
             <div className="cx-actions">
               <button
                 className="btn btn-ghost"
-                disabled={!acknowledged || busy || allSelected}
-                onClick={() => setSelectedOutpoints(scan.utxos.map((utxo) => utxo.outpoint))}
+                disabled={!acknowledged || busy || allSelected || hasSignedBatches}
+                onClick={() => { setSelectedOutpoints(scan.utxos.map((utxo) => utxo.outpoint)); clearPlan(); }}
               >
                 Select all {num(scan.utxos.length)} UTXOs
               </button>
-              <button className="btn btn-ghost" disabled={!acknowledged || busy} onClick={() => setSelectedOutpoints([])}>
+              <button className="btn btn-ghost" disabled={!acknowledged || busy || hasSignedBatches} onClick={() => { setSelectedOutpoints([]); clearPlan(); }}>
                 Clear selection
               </button>
             </div>
+          )}
+
+          {scan && acknowledged && (
+            <details className="cx-details">
+              <summary className="mono">Choose individual UTXOs ({num(selectedUtxos.length)} selected)</summary>
+              <p className="cx-note">Each output is spent in full, including all inscriptions and any undetected assets it carries.</p>
+              <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+                {scan.utxos.slice(selectionPage * 100, (selectionPage + 1) * 100).map((utxo) => (
+                  <label className="cx-check" key={utxo.outpoint}>
+                    <input
+                      type="checkbox"
+                      checked={selectedSet.has(utxo.outpoint)}
+                      disabled={busy || hasSignedBatches}
+                      onChange={(event) => {
+                        setSelectedOutpoints((current) => event.target.checked
+                          ? [...current, utxo.outpoint]
+                          : current.filter((outpoint) => outpoint !== utxo.outpoint));
+                        clearPlan();
+                      }}
+                    />
+                    <span><span className="cx-mono">{utxo.outpoint}</span><br />{sats(utxo.amount)} · {num(utxo.inscriptionIds.length)} inscription(s)</span>
+                  </label>
+                ))}
+              </div>
+              <div className="cx-actions">
+                <button className="btn btn-ghost btn-sm" disabled={busy || selectionPage === 0} onClick={() => setSelectionPage((page) => page - 1)}>Previous outputs</button>
+                <span className="cx-note">Page {selectionPage + 1} of {Math.max(1, Math.ceil(scan.utxos.length / 100))} · 100 outputs per page</span>
+                <button className="btn btn-ghost btn-sm" disabled={busy || (selectionPage + 1) * 100 >= scan.utxos.length} onClick={() => setSelectionPage((page) => page + 1)}>Next outputs</button>
+              </div>
+            </details>
           )}
 
           {!acknowledged && (
@@ -681,9 +714,9 @@ export function Reclaimer() {
               <input
                 className="mono"
                 value={destination}
-                onChange={(event) => setDestination(event.target.value)}
+                onChange={(event) => { setDestination(event.target.value); clearPlan(); }}
                 placeholder="bc1q… / bc1p… / a swap BTC deposit address"
-                disabled={!acknowledged}
+                disabled={!acknowledged || busy || hasSignedBatches}
                 spellCheck={false}
                 autoComplete="off"
               />
@@ -696,10 +729,20 @@ export function Reclaimer() {
                 min={1}
                 max={Number(MAX_FEE_RATE_SAT_VB)}
                 value={feeRate}
-                onChange={(event) => setFeeRate(event.target.value)}
+                onChange={(event) => { setFeeRate(event.target.value); clearPlan(); }}
+                disabled={busy || hasSignedBatches}
+                step={1}
               />
             </label>
           </div>
+
+          {hasSignedBatches && (
+            <p className="cx-note" role="status">
+              This plan has signed batches. Its destination, fee rate and input selection are locked.
+              Download verified .hex files before reconnecting, changing network, rescanning or refreshing.
+              Resolve submitted txids before building another plan over the same inputs.
+            </p>
+          )}
 
           <dl className="cx-stats">
             <div>
@@ -728,10 +771,11 @@ export function Reclaimer() {
                 (mainnetWallet && !mainnetAcknowledged) ||
                 selectedUtxos.length === 0 ||
                 destination.length === 0 ||
-                busy
+                busy ||
+                hasSignedBatches
               }
             >
-              Sweep all ({num(selectedUtxos.length)} UTXOs)
+              Review sweep ({num(selectedUtxos.length)} UTXOs)
             </button>
             <button
               className="btn btn-ghost"
@@ -979,11 +1023,10 @@ export function Reclaimer() {
                         </dl>
 
                         <p className="cx-note cx-note-tight">
-                          This signed transaction exists only in this browser tab. Refreshing or closing
-                          the tab discards it and you would sign again — your bitcoin is never at risk,
-                          because an un-broadcast transaction does not exist on the network. Save the
-                          verified bytes if you want to be able to submit them later without signing
-                          again.
+                          Refreshing or closing the tab discards this copy of the signed transaction.
+                          Download the verified bytes to recover it without signing again. A saved
+                          signed file can spend these inputs if submitted later. Check any submitted
+                          or ambiguous txid before building or signing another transaction over them.
                         </p>
 
                         <div className="cx-actions">
@@ -1018,8 +1061,8 @@ export function Reclaimer() {
                     )}
 
                     <div className="cx-actions">
-                      <button className="btn btn-primary" onClick={() => onSign(batch)} disabled={busy || !canSign}>
-                        {report ? 'Sign again' : 'Sign + verify'}
+                      <button className="btn btn-primary" onClick={() => onSign(batch)} disabled={busy || !canSign || outcomes[batch.index] !== undefined}>
+                        {outcomes[batch.index] ? 'Submitted' : report ? 'Sign again' : 'Sign + verify'}
                       </button>
                       <button
                         className="btn btn-magenta"
@@ -1086,12 +1129,13 @@ export function Reclaimer() {
         )}
 
         <ImportTransaction
+          key={wallet?.requestedNetwork ?? network}
           network={wallet?.requestedNetwork ?? network}
           broadcastState={broadcastState}
           authorisation={BROADCAST_AUTHORISATION}
         />
 
-        <div className="cx-log" aria-live="polite" aria-atomic="true">
+        <div className="cx-log" aria-live="polite" aria-atomic="true" style={{ position: 'sticky', bottom: 16, zIndex: 10 }}>
           {status && (
             <p className="cx-banner" data-tone="info">
               <span className="cx-banner-tag mono">Status</span>

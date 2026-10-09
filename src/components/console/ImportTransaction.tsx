@@ -52,6 +52,7 @@ export function ImportTransaction({
   const [outcome, setOutcome] = useState<BroadcastOutcome | null>(null);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const operationInFlight = useRef(false);
 
   const allowed = isBroadcastAuthorised(network, authorisation);
   const inspectionPassed = report?.ok === true;
@@ -95,14 +96,26 @@ export function ImportTransaction({
 
   async function onFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    setHexInput(text.trim());
-    onInspect(text);
+    if (!file || operationInFlight.current) return;
+    operationInFlight.current = true;
+    setBusy(true);
+    reset();
+    try {
+      const text = await file.text();
+      setHexInput(text.trim());
+      onInspect(text);
+    } catch (error) {
+      reset();
+      setFailure(`Could not read the transaction file: ${errorMessage(error)}`);
+    } finally {
+      operationInFlight.current = false;
+      setBusy(false);
+    }
   }
 
   async function onBroadcast() {
-    if (!report) return;
+    if (!report || !canBroadcast || operationInFlight.current) return;
+    operationInFlight.current = true;
     setBusy(true);
     setFailure('');
     try {
@@ -125,6 +138,7 @@ export function ImportTransaction({
     } catch (error) {
       setFailure(errorMessage(error));
     } finally {
+      operationInFlight.current = false;
       setBusy(false);
     }
   }
@@ -154,7 +168,8 @@ export function ImportTransaction({
             className="mono"
             rows={3}
             value={hexInput}
-            onChange={(event) => setHexInput(event.target.value)}
+            onChange={(event) => { setHexInput(event.target.value); reset(); }}
+            disabled={busy}
             placeholder="020000000001…"
             spellCheck={false}
             autoComplete="off"
@@ -171,6 +186,7 @@ export function ImportTransaction({
           type="file"
           accept=".hex,.txt,text/plain"
           onChange={onFile}
+          disabled={busy}
           hidden
           aria-label="Choose a saved raw transaction file"
         />
