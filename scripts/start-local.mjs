@@ -23,9 +23,10 @@
  *   pnpm local --mode=testnet       Signet/Testnet, broadcasting allowed
  *   pnpm local --mode=mainnet       Mainnet building and signing; no broadcast
  *   pnpm local --mode=broadcast     Mainnet with broadcasting (types a phrase)
- *   pnpm local --mode=plan --prod   production build instead of dev server
+ *   pnpm local --mode=plan --prod   production build (the default)
  */
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { createInterface } from 'node:readline';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,9 +73,10 @@ const MODES = {
 const CONFIRM_PHRASE = 'I UNDERSTAND REAL BITCOIN CAN MOVE';
 
 function parseArgs(argv) {
-  const options = { mode: null, prod: false, confirm: false };
+  const options = { mode: null, prod: true, confirm: false };
   for (const arg of argv) {
     if (arg === '--prod' || arg === '--production') options.prod = true;
+    else if (arg === '--dev') options.prod = false;
     else if (arg === '--confirm-real-btc') options.confirm = true;
     else if (arg.startsWith('--mode=')) options.mode = arg.slice('--mode='.length);
     else if (arg === '--help' || arg === '-h') options.help = true;
@@ -97,7 +99,8 @@ function helpText() {
     '  pnpm local --mode=testnet     Signet/Testnet, broadcasting allowed',
     '  pnpm local --mode=mainnet     Mainnet building and signing, no broadcast',
     '  pnpm local --mode=broadcast   Mainnet with broadcasting',
-    '  pnpm local --mode=plan --prod production build instead of the dev server',
+    '  pnpm local --mode=plan --prod production build (default)',
+    '  pnpm local --mode=plan --dev  development server for contributors',
     '',
     'The server binds to 127.0.0.1 and is never reachable from your network.',
     'Set PORT to change the port (default 3000).',
@@ -109,9 +112,47 @@ if (options.help) {
   process.exit(0);
 }
 
-// `pnpm` is a shell script on POSIX and a .cmd shim on Windows, so a direct
-// spawn only works on one of them.
-const SPAWN_OPTS = { cwd: root, shell: process.platform === 'win32' };
+// Invoke the installed Next CLI through Node, avoiding package-manager shell shims.
+let currentChild = null;
+let stopSignal = null;
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    stopSignal = signal;
+    if (!currentChild) process.exit(signal === 'SIGINT' ? 130 : 143);
+    if (process.platform === 'win32') currentChild.kill(signal);
+    else {
+      try { process.kill(-currentChild.pid, signal); } catch (error) {
+        if (error.code !== 'ESRCH') console.error(`Could not stop the server: ${error.message}`);
+      }
+    }
+  });
+}
+
+async function runNext(args, env) {
+  let cli;
+  try {
+    cli = createRequire(import.meta.url).resolve('next/dist/bin/next');
+  } catch {
+    console.error('Next.js is not installed. Run `pnpm install --frozen-lockfile`.');
+    return 1;
+  }
+  return await new Promise((resolve) => {
+    const child = spawn(process.execPath, [cli, ...args], {
+      cwd: root, env, stdio: 'inherit', detached: process.platform !== 'win32',
+    });
+    currentChild = child;
+    child.on('error', (error) => {
+      console.error(`Could not start Next.js: ${error.message}`);
+      currentChild = null;
+      resolve(1);
+    });
+    child.on('close', (code, signal) => {
+      currentChild = null;
+      resolve(stopSignal === 'SIGINT' || signal === 'SIGINT' ? 130
+        : stopSignal === 'SIGTERM' || signal === 'SIGTERM' ? 143 : code ?? 1);
+    });
+  });
+}
 
 if (options.mode && !MODES[options.mode]) {
   console.error(`Unknown mode: ${options.mode}. Expected one of: ${Object.keys(MODES).join(', ')}`);
@@ -198,6 +239,10 @@ async function main() {
   }
   if (mode === 'broadcast' && interactive) await confirmRealBtc();
 
+  if (!/^\d+$/.test(PORT) || Number(PORT) < 1 || Number(PORT) > 65535) {
+    console.error('PORT must be an integer between 1 and 65535. Nothing was started.');
+    process.exit(2);
+  }
   const chosen = MODES[mode];
   const env = {
     ...process.env,
@@ -223,30 +268,30 @@ async function main() {
   // `next build` writes a production artifact, so do it first when asked for it.
   if (options.prod) {
     console.log(dim('  Building the production bundle…'));
-    const build = spawnSync('pnpm', ['exec', 'next', 'build'], { ...SPAWN_OPTS, env, stdio: 'inherit' });
-    if (build.status !== 0) {
+    const buildStatus = await runNext(['build'], env);
+    if (buildStatus !== 0) {
       console.error('');
       console.error('The production build failed. Nothing was started.');
-      process.exit(build.status ?? 1);
+      process.exit(buildStatus);
     }
   }
 
   const nextArgs = options.prod
-    ? ['exec', 'next', 'start', '-H', HOST, '-p', PORT]
-    : ['exec', 'next', 'dev', '-H', HOST, '-p', PORT];
+    ? ['start', '-H', HOST, '-p', PORT]
+    : ['dev', '-H', HOST, '-p', PORT];
 
-  console.log(dim(`  Starting: pnpm ${nextArgs.join(' ')}`));
+  console.log(dim(`  Starting: next ${nextArgs.join(' ')}`));
   console.log('');
-  const child = spawnSync('pnpm', nextArgs, { ...SPAWN_OPTS, env, stdio: 'inherit' });
+  const serverStatus = await runNext(nextArgs, env);
 
-  if (child.status !== 0 && child.signal === null) {
+  if (serverStatus !== 0 && !stopSignal) {
     console.error('');
     console.error('The server exited with an error. Common causes:');
     console.error(`  - port ${PORT} is already in use: set a different one with PORT=3001 pnpm local`);
     console.error('  - dependencies are missing: run `pnpm install`');
     console.error('  - the toolchain is too old: run `pnpm local:check`');
   }
-  process.exit(child.status ?? 1);
+  process.exit(serverStatus);
 }
 
 main().catch((error) => {

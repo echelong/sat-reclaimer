@@ -13,11 +13,11 @@ import { KEY_B_PRIV, ORDINALS, makeUtxos, taprootFor } from './fixtures';
  * Every size is planned by the real planner and measured from the real serialized
  * PSBT — nothing here is extrapolated from a per-input rule.
  *
- * Sizes up to 2,000 also sign and independently verify every input with the
+ * Sizes up to 5,000 also sign and independently verify every input with the
  * deterministic test key, which is the expensive part and the part that proves the
- * whole pipeline holds at scale. 5,000 and 10,000 are planned, measured and
+ * whole pipeline holds at scale. 10,000 is planned, measured and
  * asserted but not locally signed: signing ten thousand inputs in-process adds
- * minutes and proves nothing the 2,000-input case has not already proved. That
+ * minutes beyond the 5,000-input case. That
  * split is deliberate and the numbers printed here are the numbers reported in
  * `docs/PERFORMANCE.md`.
  *
@@ -46,7 +46,7 @@ type Sample = {
   weightLargest: number;
   totalWeight: number;
   psbtKib: number;
-  rawKib: number;
+  rawKib: number | null;
   signVerifyMs: number | null;
   rssMb: number;
   feePercent: number;
@@ -172,7 +172,7 @@ async function measure(size: number, signed: boolean): Promise<Sample> {
   const psbtBase64Bytes = plan.batches.reduce((total, batch) => total + batch.psbtBase64.length, 0);
 
   let signVerifyMs: number | null = null;
-  let rawBytes = Math.round((psbtBase64Bytes * 3) / 4);
+  let rawBytes: number | null = null;
   if (signed) {
     const result = await signAndVerifyAll(plan);
     expect(result.ok).toBe(true);
@@ -195,7 +195,7 @@ async function measure(size: number, signed: boolean): Promise<Sample> {
     weightLargest: measurement.weight,
     totalWeight: plan.totalWeight,
     psbtKib: Math.round((psbtBase64Bytes / 1024) * 10) / 10,
-    rawKib: Math.round((rawBytes / 1024) * 10) / 10,
+    rawKib: rawBytes === null ? null : Math.round((rawBytes / 1024) * 10) / 10,
     signVerifyMs,
     rssMb: rssMb(),
     feePercent: Number(plan.feePercent.toFixed(3)),
@@ -209,7 +209,8 @@ describe('large-wallet acceptance: planned, signed and independently verified', 
   it('1 UTXO', { timeout: 60_000 }, async () => {
     const sample = await measure(1, true);
     expect(sample.batchCount).toBe(1);
-    expect(sample.rawKib).toBeGreaterThan(0);
+    expect(sample.rawKib).not.toBeNull();
+    expect(sample.rawKib!).toBeGreaterThan(0);
   });
 
   it('100 UTXOs', { timeout: 180_000 }, async () => {
@@ -283,7 +284,7 @@ afterAll(() => {
       String(s.planMs).padStart(9) +
       String(s.signVerifyMs ?? '-').padStart(11) +
       String(s.psbtKib).padStart(10) +
-      String(s.rawKib).padStart(9) +
+      String(s.rawKib ?? '-').padStart(9) +
       String(s.feePercent).padStart(8) +
       String(s.rssMb).padStart(8),
     );
