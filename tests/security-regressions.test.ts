@@ -187,8 +187,14 @@ describe('F3: dust thresholds match Bitcoin Core', () => {
 /* F4 — the fee must cover the transaction's own measured size                 */
 /* -------------------------------------------------------------------------- */
 
+// These two build and serialize real PSBTs (up to 200 inputs, several fee rates),
+// which is multi-second pure-JS work. They are synchronous, so a wall-clock
+// overrun trips vitest's overdue default 5s timer the moment the thread frees and
+// fails an otherwise-passing test. Each declares an explicit timeout — the same
+// convention `tests/large-wallet.test.ts` and `tests/psbt.test.ts` use — so the
+// assertions run to completion instead of racing the default.
 describe('F4: fee pays for the exact measured size', () => {
-  it('pays exactly vsize x fee rate for every measured size', () => {
+  it('pays exactly vsize x fee rate for every measured size', { timeout: 30_000 }, () => {
     for (const count of [1, 2, 17, 200]) {
       for (const rate of [1n, 3n, 40n]) {
         const batch = build(count, rate);
@@ -200,7 +206,7 @@ describe('F4: fee pays for the exact measured size', () => {
     }
   });
 
-  it('agrees with the independent analytic weight model', () => {
+  it('agrees with the independent analytic weight model', { timeout: 30_000 }, () => {
     for (const count of [1, 2, 17, 200]) {
       const batch = build(count);
       expect(batch.weight).toBe(estimateSweepWeight(count, 34));
@@ -350,7 +356,7 @@ describe('F7: unsigned or stripped bytes are refused before submission', () => {
 /* -------------------------------------------------------------------------- */
 
 describe('F8: a wallet payload rejection can be answered more than once', () => {
-  it('re-plans the same UTXO set into a smaller batch without changing totals', () => {
+  it('re-plans the same UTXO set into a smaller batch without changing totals', { timeout: 30_000 }, () => {
     const utxos = makeUtxos(32);
     const full = planSweep({
       utxos,
@@ -387,7 +393,7 @@ describe('F8: a wallet payload rejection can be answered more than once', () => 
     expect(quartered.batchCount).toBeGreaterThan(halved.batchCount);
   });
 
-  it('never loses an input while halving', () => {
+  it('never loses an input while halving', { timeout: 30_000 }, () => {
     const utxos = makeUtxos(101);
     const plan = planSweep({
       utxos,
