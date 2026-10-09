@@ -62,16 +62,7 @@ jobs:
         run: pnpm build
 
       - name: Assert every product flag is off in the artifact
-        run: |
-          set -euo pipefail
-          # A public build must never contain an enabled Mainnet flag. Fail loudly
-          # rather than shipping a build whose defaults are unsafe.
-          if grep -rIl --include='*.js' -- 'NEXT_PUBLIC_ENABLE_MAINNET' .next/static >/dev/null 2>&1; then
-            echo "flag names appear in client bundles; checking values is not possible from here"
-          fi
-          echo "flags in this job: MAINNET=$NEXT_PUBLIC_ENABLE_MAINNET \
-          SIGNET_BROADCAST=$NEXT_PUBLIC_ENABLE_SIGNET_BROADCAST \
-          MAINNET_BROADCAST=$NEXT_PUBLIC_ENABLE_MAINNET_BROADCAST"
+        run: node scripts/check-safe-artifact.mjs
 
   large-wallet:
     name: large-wallet acceptance (up to 10,000 UTXOs)

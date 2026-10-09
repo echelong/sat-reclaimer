@@ -1,6 +1,6 @@
 # v0.1.0-rc.1 — release candidate notes
 
-**Status: prepared, NOT published.** There is no tag and no GitHub release. The
+**Status: historical draft, superseded by [v0.1.0-rc.2](RELEASE_NOTES_v0.1.0-rc.2.md), NOT published.** There is no tag and no GitHub release. The
 text below is what would be published, and it is deliberately specific about what
 has and has not been verified. Do not publish it while the open items at the
 bottom are open.

@@ -34,8 +34,8 @@ request that breaks one will be closed rather than patched:
 git clone https://github.com/echelong/sat-reclaimer
 cd sat-reclaimer
 corepack enable                # use the pinned pnpm@10.17.1
-pnpm install
-pnpm local                     # asks which mode; the default cannot spend
+pnpm install --frozen-lockfile
+pnpm local --dev               # contributor server; the default cannot broadcast
                                # http://127.0.0.1:3000      landing
                                # http://127.0.0.1:3000/app  reclaim console
 ```
@@ -60,7 +60,7 @@ also run the large-wallet suite:
 pnpm test:max  # adds the 10,000-UTXO plan (~2 minutes)
 ```
 
-`pnpm test` runs 243 tests (242 pass, 1 skipped) in roughly six minutes, most of it
+`pnpm test` runs the regression suite in roughly seven minutes, most of it
 real PSBT construction, signing, verification and finalization for wallets from 1
 to 5,000 inputs. The one skip is the 10,000-input plan: it is a single ~100-second
 synchronous computation, so it lives behind `pnpm test:max` rather than in the

@@ -363,10 +363,12 @@ export type BroadcastOutcome = {
 export type BroadcastState = {
   inFlight: Set<string>;
   completed: Map<string, BroadcastOutcome>;
+  /** Includes failed/ambiguous submissions: never POST these bytes again this session. */
+  attempted: Set<string>;
 };
 
 export function createBroadcastState(): BroadcastState {
-  return { inFlight: new Set(), completed: new Map() };
+  return { inFlight: new Set(), completed: new Map(), attempted: new Set() };
 }
 
 const sharedBroadcastState = createBroadcastState();
@@ -430,7 +432,7 @@ async function submitToEndpoint(args: {
     if (returned && returned !== args.txid) {
       throw new ReclaimerError(
         'BROADCAST_TXID_MISMATCH',
-        `${endpoint.label} returned txid ${text}, which does not match the verified ${args.txid}. The response cannot be attributed to this transaction. Treat the sweep as NOT broadcast and verify the txid on an independent explorer before doing anything else.`,
+        `${endpoint.label} returned txid ${text}, which does not match the verified ${args.txid}. The submission outcome is unknown. Check the verified txid on independent nodes before doing anything else.`,
       );
     }
     return {
@@ -524,7 +526,6 @@ export async function checkTxidStatus(args: {
     // claiming a mempool presence that was never reported would be a fabricated
     // result, so the next endpoint is asked instead.
     if (typeof confirmedFlag !== 'boolean') continue;
-    answered = true;
     const confirmed = confirmedFlag;
     const height = (body as { block_height?: unknown }).block_height;
     const blockHeight = typeof height === 'number' ? height : null;
@@ -563,13 +564,15 @@ async function attemptBroadcast(args: {
 }): Promise<BroadcastOutcome> {
   const transportFailures: string[] = [];
 
-  for (const endpoint of args.endpoints) {
+  // A timeout/503 does not prove the node failed to relay the transaction.
+  // Submit once, then consult every independent node using GET only.
+  const endpoint = args.endpoints[0];
+  if (!endpoint) throw new ReclaimerError('BROADCAST_UNREACHABLE', 'No broadcast endpoint is configured.');
+  {
     const result = await submitToEndpoint({ ...args, endpoint });
     if (result.kind === 'transport') {
       transportFailures.push(result.detail);
-      continue;
-    }
-    return {
+    } else return {
       status: result.kind,
       txid: args.txid,
       endpoint: endpoint.label,
@@ -579,7 +582,7 @@ async function attemptBroadcast(args: {
     };
   }
 
-  // Every submission failed at the transport level. Before drawing any
+  // The single submission failed at the transport level. Before drawing any
   // conclusion — and certainly before resubmitting — ask the network whether
   // this exact txid is already known.
   const lookup = await checkTxidStatus({
@@ -601,12 +604,12 @@ async function attemptBroadcast(args: {
   if (lookup.answered) {
     throw new ReclaimerError(
       'BROADCAST_UNKNOWN',
-      `No endpoint accepted the submission and txid ${args.txid} is not known to any endpoint (${transportFailures.join('; ')}). The transaction may never have left this machine, or it may still be propagating. This app will not resubmit automatically: check the txid on an independent explorer and wait before deciding to try again.`,
+      `The submission outcome is unknown and txid ${args.txid} is not known to queried endpoints (${transportFailures.join('; ')}). It may still be propagating. This app will not resubmit it this session: save the verified bytes and check the txid before making any further spending decision.`,
     );
   }
   throw new ReclaimerError(
     'BROADCAST_UNREACHABLE',
-    `Every broadcast endpoint failed and the txid lookup could not be completed (${transportFailures.join('; ')}). The transaction was not confirmed as submitted, and nothing was retried automatically. Check the txid before trying again.`,
+    `The submission and independent txid lookups could not be answered (${transportFailures.join('; ')}). Its outcome is unknown and nothing was retried. Save the verified bytes and check the txid; this app will not resubmit it this session.`,
   );
 }
 
@@ -658,8 +661,12 @@ export async function broadcastRawTransaction(request: BroadcastRequest): Promis
       'A broadcast of this exact transaction is already in progress. Wait for that result instead of submitting a duplicate.',
     );
   }
+  if (state.attempted.has(txid)) {
+    throw new ReclaimerError('BROADCAST_UNKNOWN', 'A submission of this exact txid was already attempted. Use Check confirmation to resolve it; this session will not submit it again.');
+  }
 
   state.inFlight.add(txid);
+  state.attempted.add(txid);
   try {
     const outcome = await attemptBroadcast({ endpoints, rawTxHex, txid, fetcher, timeoutMs });
     if (outcome.status === 'accepted' || outcome.status === 'already-known') {

@@ -10,6 +10,7 @@ import {
 } from '@/src/lib/imported-transaction';
 import {
   broadcastRawTransaction,
+  checkTxidStatus,
   broadcastUnlockHint,
   isBroadcastAuthorised,
   type BroadcastAuthorisation,
@@ -52,6 +53,7 @@ export function ImportTransaction({
   const [outcome, setOutcome] = useState<BroadcastOutcome | null>(null);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const operationInFlight = useRef(false);
 
   const allowed = isBroadcastAuthorised(network, authorisation);
   const inspectionPassed = report?.ok === true;
@@ -63,6 +65,7 @@ export function ImportTransaction({
     report !== null &&
     authorizedTxid === report.txid &&
     phraseOk &&
+    !broadcastState.attempted.has(report.txid) &&
     outcome === null;
 
   function reset() {
@@ -95,14 +98,26 @@ export function ImportTransaction({
 
   async function onFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    setHexInput(text.trim());
-    onInspect(text);
+    if (!file || operationInFlight.current) return;
+    operationInFlight.current = true;
+    setBusy(true);
+    reset();
+    try {
+      const text = await file.text();
+      setHexInput(text.trim());
+      onInspect(text);
+    } catch (error) {
+      reset();
+      setFailure(`Could not read the transaction file: ${errorMessage(error)}`);
+    } finally {
+      operationInFlight.current = false;
+      setBusy(false);
+    }
   }
 
   async function onBroadcast() {
-    if (!report) return;
+    if (!report || !canBroadcast || operationInFlight.current) return;
+    operationInFlight.current = true;
     setBusy(true);
     setFailure('');
     try {
@@ -125,6 +140,23 @@ export function ImportTransaction({
     } catch (error) {
       setFailure(errorMessage(error));
     } finally {
+      operationInFlight.current = false;
+      setBusy(false);
+    }
+  }
+
+  async function onCheckStatus() {
+    if (!report || operationInFlight.current) return;
+    operationInFlight.current = true;
+    setBusy(true);
+    setFailure('');
+    try {
+      const result = await checkTxidStatus({ txid: report.txid, network });
+      setStatus(result.detail);
+    } catch (error) {
+      setFailure(errorMessage(error));
+    } finally {
+      operationInFlight.current = false;
       setBusy(false);
     }
   }
@@ -154,7 +186,8 @@ export function ImportTransaction({
             className="mono"
             rows={3}
             value={hexInput}
-            onChange={(event) => setHexInput(event.target.value)}
+            onChange={(event) => { setHexInput(event.target.value); reset(); }}
+            disabled={busy}
             placeholder="020000000001…"
             spellCheck={false}
             autoComplete="off"
@@ -171,6 +204,7 @@ export function ImportTransaction({
           type="file"
           accept=".hex,.txt,text/plain"
           onChange={onFile}
+          disabled={busy}
           hidden
           aria-label="Choose a saved raw transaction file"
         />
@@ -181,6 +215,12 @@ export function ImportTransaction({
 
       {report && (
         <>
+          <div className="cx-actions">
+            <button className="btn btn-ghost" disabled={busy} onClick={onCheckStatus}>Check confirmation</button>
+          </div>
+          {broadcastState.attempted.has(report.txid) && !outcome && (
+            <p className="cx-note" role="status">Submission was attempted for this txid. Check confirmation; this session will not submit it again.</p>
+          )}
           <dl className="cx-dl cx-dl-grid">
             <div>
               <dt>TXID</dt>

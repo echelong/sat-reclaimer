@@ -233,28 +233,19 @@ describe('successful broadcasts', () => {
     expect(state.completed.get(sweep.txid)?.status).toBe('accepted');
   });
 
-  it('falls back to the next endpoint when the first has a transport failure', async () => {
+  it('uses only read-only fallback across independent endpoints after an ambiguous POST', async () => {
     const sweep = signedSweep();
-    let call = 0;
-    const { fetchImpl, calls } = recorder(() => {
-      call += 1;
-      return call === 1 ? response(503, 'upstream unavailable') : response(200, sweep.txid);
+    const { fetchImpl, calls } = recorder((call) => {
+      if (call.init.method === 'POST') return response(503, 'upstream unavailable');
+      return call.url.includes('mempool.space') ? response(404, 'unknown') : response(200, JSON.stringify({ confirmed: false }));
     });
-
-    const outcome = await broadcastRawTransaction({
-      ...sweep,
-      authorisation: AUTHORISED_MAINNET,
-      verificationPassed: true,
-      fetchImpl,
-      state: createBroadcastState(),
-    });
-
+    const outcome = await broadcastRawTransaction({ ...sweep, authorisation: AUTHORISED_MAINNET,
+      verificationPassed: true, fetchImpl, state: createBroadcastState() });
     expect(outcome.status).toBe('accepted');
     expect(outcome.endpoint).toBe('blockstream.info');
-    expect(calls.map((entry) => entry.url)).toEqual([
-      'https://mempool.space/api/tx',
-      'https://blockstream.info/api/tx',
-    ]);
+    expect(outcome.recoveredAfterTimeout).toBe(true);
+    expect(calls.map((entry) => entry.init.method)).toEqual(['POST', 'GET', 'GET']);
+    expect(calls[2].url).toBe(`https://blockstream.info/api/tx/${sweep.txid}/status`);
   });
 
   it('treats an already-known transaction as accepted, not as a failure', async () => {
@@ -489,6 +480,26 @@ describe('duplicate submissions', () => {
     expect(second).toEqual(first);
     expect(calls).toHaveLength(1);
     expect(state.completed.has(sweep.txid)).toBe(true);
+  });
+
+  it.each(['timeout', '503', 'rejection', 'wrong_txid'])('retains attempted txids after %s and prevents resubmission', async (kind) => {
+    const sweep = signedSweep();
+    const state = createBroadcastState();
+    const { fetchImpl, calls } = recorder((call) => {
+      if (call.init.method === 'GET') return response(404, 'unknown');
+      if (kind === 'timeout') transportError();
+      if (kind === '503') return response(503, 'unavailable');
+      if (kind === 'wrong_txid') return response(200, 'f'.repeat(64));
+      return response(400, 'bad-txns-inputs-missingorspent');
+    });
+    const request = { ...sweep, authorisation: AUTHORISED_MAINNET, verificationPassed: true, fetchImpl, state };
+    await expect(broadcastRawTransaction(request)).rejects.toBeInstanceOf(Error);
+    expect(state.attempted.has(sweep.txid)).toBe(true);
+    const afterFirst = calls.length;
+    await expect(broadcastRawTransaction(request)).rejects.toMatchObject({ code: 'BROADCAST_UNKNOWN' });
+    expect(calls).toHaveLength(afterFirst);
+    expect(calls.filter((call) => call.init.method === 'POST')).toHaveLength(1);
+    expect(state.inFlight.size).toBe(0);
   });
 
   it('refuses a second submission while one is still in flight', async () => {

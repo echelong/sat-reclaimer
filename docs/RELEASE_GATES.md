@@ -14,7 +14,7 @@ Legend: **PASS** = demonstrated in this repository with reproducible evidence ·
 demonstrated by any evidence available here (often because it needs a live wallet,
 a real deployment, or a third party).
 
-Date of record: 2026-10-08. Repo HEAD audited: see `docs/MAINNET_ACCEPTANCE.md`
+Date of record: 2026-10-09. M9 local results: `docs/M9_VALIDATION.md`. Repo HEAD audited: see `docs/MAINNET_ACCEPTANCE.md`
 and the final release report.
 
 ---
@@ -54,7 +54,7 @@ and the final release report.
 | C2 | Interrupted batches cannot produce a duplicate transaction | **PASS** | Exact-partition invariants + per-`txid` broadcast authorization; `tests/security-regressions.test.ts` |
 | C3 | Imported raw transactions never inherit prior approval and never auto-broadcast | **PASS** | `src/lib/imported-transaction.ts` + `src/components/console/ImportTransaction.tsx`; `tests/imported-transaction.test.ts` |
 | C4 | Unverifiable fields of an imported transaction are reported, not assumed | **PASS** | `feeSats`/`inputSats` returned `null` with a 4-item `unverifiable` list |
-| C5 | Post-scan wallet/network switch, disconnect and reconnect handled | **PASS** | `src/components/Reclaimer.tsx`; covered by component behaviour and `tests/wallet.test.ts` |
+| C5 | Post-scan wallet/network switch, disconnect and reconnect handled | **PASS** | `src/components/Reclaimer.tsx`; M9 console-handler regressions prove clearing on network change, failed rescan and failed disconnect; `tests/console-session.test.tsx`, `tests/wallet.test.ts` |
 | C6 | A verified raw transaction can be exported before the window is lost | **PASS** | *Download verified .hex* writes the finalized raw transaction; a raw transaction is public network data and contains no key material |
 | C7 | An exported transaction can be brought back and broadcast without signing again | **PASS** | The import panel requires a fresh per-`txid` acknowledgement and the `SPEND AS BTC` phrase, decodes and re-derives locally, never inherits prior approval, never auto-broadcasts, and shares the broadcast ledger |
 | C8 | A signed transaction survives a page refresh with no user action | **NOT VERIFIED** | Deliberately not implemented — persisting a near-broadcast transaction is the failure mode this project forbids, and the safe design is written up in `docs/PUBLIC_BETA.md`. **A user who did not download the `.hex` before the refresh must sign again.** The operator-reported M8 result does **not** close this gate and is not offered as evidence for it: M8 tests deliberate manual recovery through the import panel, which is the documented alternative to C8, not survival without user action |
@@ -111,15 +111,17 @@ and the final release report.
 | G2 | Deployment model chosen (static vs Node service) | **PASS** | App is static: no server routes. `next.config.ts` sets response headers, which a pure static export cannot, so the deploy target is a Node `next start` web service rather than a static host |
 | G3 | Security headers, CSP and cache policy correct in production | **PASS** | `next.config.ts` (`/app` `no-store`; policy pages `s-maxage=3600`) |
 | G4 | robots/sitemap rules and canonical/OG metadata | **PASS** | `app/robots.ts`, `app/sitemap.ts`, `NEXT_PUBLIC_SITE_URL` (falls back to localhost until the domain exists) |
-| G5 | `NEXT_PUBLIC_*` treated as public config, not an authorization boundary | **PASS** | Enforced in code: broadcast refuses regardless of UI state; server-side is the authority |
+| G5 | `NEXT_PUBLIC_*` treated as public config, not an authorization boundary | **PASS** | Flags are browser product policy. The wallet approves exact transaction bytes and independent verification checks them; no server-side authorization boundary is claimed |
 | G6 | Rate limiting, where server routes exist | **PASS** | There are no server routes — no `route.ts` anywhere in the tree — so there is nothing to rate limit; broadcast submissions go from the browser straight to public nodes. Revisit the moment a server route is added |
 | G7 | Staging deployment protected from public access and indexing | **NOT VERIFIED** | No deployment was performed and none is planned: distribution is the repository plus a local process, and `docs/PUBLIC_BETA.md` and `CLAUDE.md` state that no hosted site, domain or account is wanted. The gate is therefore proposed for an **explicit scope change** — see *Proposed scope change: G7* below. **No status change has been applied**: it stays NOT VERIFIED until the owner decides, and silently converting it to PASS would be the one edit this document must never make |
 | G8 | Production feature level reports the true public-launch state | **PASS** | `docs/PUBLIC_BETA.md` states the site is **not** ready for unrestricted public Mainnet reclaim while gates A11/E7/B6 are open |
 
 ## H — Browser accessibility and performance
 
-Production build (`all flags false`), served with `next start`, driven in headless
-Chromium over the Chrome DevTools Protocol.
+Historical production-build evidence (`all flags false`), served with `next start`,
+driven in headless Chromium over the Chrome DevTools Protocol. These observations
+were not repeated in M9: browser automation was unavailable. M9 HTTP/header and
+handler checks do not substitute for visual or live-wallet acceptance.
 
 | # | Requirement | Status | Evidence |
 | --- | --- | --- | --- |
@@ -173,7 +175,7 @@ The product is distributed by cloning the public repository and running it on th
 user's own machine. There is no hosted site, no account, no subscription, no
 platform fee and no server component. The launcher (`scripts/start-local.mjs`),
 the environment check (`scripts/check-environment.mjs`) and `docs/LOCAL_SETUP.md`
-were added for this milestone; `docs/RELEASE_NOTES_v0.1.0-rc.1.md` is the prepared
+were added for this milestone; `docs/RELEASE_NOTES_v0.1.0-rc.2.md` is the prepared
 but **unpublished** release candidate.
 
 | # | Requirement | Status | Evidence |
@@ -185,10 +187,10 @@ but **unpublished** release candidate.
 | K5 | No installer is fetched from a third party and piped into a shell (`curl` into `bash` or equivalent) | **PASS** | Installation is `git clone` + `corepack enable` + `pnpm install` + `pnpm local`; nothing in the tree pipes a remote script into a shell, and the scripts are plain, inspectable Node.js files in the repository |
 | K6 | Simple and manual installation are both documented, per platform | **PASS** | `docs/LOCAL_SETUP.md` — simple path (`corepack enable`, `pnpm install`, `pnpm local`), manual reproducible path (`pnpm install --frozen-lockfile`), per-platform prerequisite table (Fedora/apt/pacman/brew/winget/corepack), mode table, ports/exposure section and a troubleshooting table |
 | K7 | First run needs no hand-edited `.env.local` | **PASS** | `pnpm local` sets the three product flags itself and prints them before starting; `README.md`, `CONTRIBUTING.md` and `docs/LOCAL_SETUP.md` all lead with `pnpm local`. The console explains the build-time Mainnet lock in-place when Mainnet is off |
-| K8 | Linux (Fedora 43, x86_64) install and local run verified end to end | **PASS** | Cloned, installed, built and served on this machine; `pnpm local:check` exits 0 (Node 22.23.1, pnpm 10.17.1, dependencies installed, Linux x64); `pnpm local` prints mode `Look and plan only`, `mainnet disabled`, `serving development server on http://127.0.0.1:3000` and `reachable 127.0.0.1 only` |
-| K9 | Windows install verified | **NOT VERIFIED** | No Windows environment was available. `scripts/start-local.mjs` handles the `pnpm.cmd` shim (`shell: process.platform === 'win32'`) and the Node scripts avoid shell metacharacters, but that is a code expectation, not a test result. `docs/LOCAL_SETUP.md` and the release notes label it as unverified |
+| K8 | Linux install and local production startup verified | **PASS** | Historical Fedora 43 evidence retained. M9 Rio: Fedora 44 x86_64, Node 24.20.0 / pnpm 10.17.1; production launcher serves `/app` HTTP 200 with Mainnet locked, socket only `127.0.0.1:3187`. Clean source installation and lifecycle evidence are in `docs/M9_VALIDATION.md`. Browser visual and live Xverse acceptance remain unverified |
+| K9 | Windows install verified | **NOT VERIFIED** | No Windows environment was available. `scripts/start-local.mjs` invokes the installed Next CLI through Node without a package-manager shell shim and the Node scripts avoid shell metacharacters, but that is a code expectation, not a test result. `docs/LOCAL_SETUP.md` and the release notes label it as unverified |
 | K10 | macOS install verified | **NOT VERIFIED** | No macOS environment was available. The toolchain is platform-neutral Node.js (Homebrew/corepack hints are printed by the check), which is an expectation, not a test result |
-| K11 | A versioned release candidate exists and is deliberately not published | **PASS** | `docs/RELEASE_NOTES_v0.1.0-rc.1.md` — source-only (no binaries/installers produced), no tag and no GitHub release, with an explicit "Do not publish yet" section naming the open items. Publishing it is a manual decision that has not been taken |
+| K11 | A versioned release candidate exists and is deliberately not published | **PASS** | `docs/RELEASE_NOTES_v0.1.0-rc.2.md` — source-only; supersedes the unpublished rc.1 draft (no binaries/installers produced), no tag and no GitHub release, with explicit publication restrictions and the open items named. Publishing it is a manual decision that has not been taken |
 
 ---
 

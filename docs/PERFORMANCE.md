@@ -8,14 +8,14 @@ of it is extrapolated from a fixed per-input rule.
   `@scure/btc-signer@2.4.1`.
 - **Reproduce:** `pnpm test` runs 1–5,000 UTXOs; `pnpm test:max`
   (`LARGE_WALLET_MAX=1`) additionally runs the 10,000-UTXO case. CI runs both, in
-  separate jobs. The raw table is printed by `tests/large-wallet.test.ts`.
+  separate jobs. The table is printed by `tests/large-wallet.test.ts`.
 
 Fixtures: every UTXO is a `10,000`-sat `v1_p2tr` output carrying one inscription,
 all spendable by one deterministic test key. Destination is P2TR, fee rate
 `2 sat/vB`. These are the same input type the Mainnet wallet held (key-path P2TR,
 one 64-byte witness element), so the serialized sizes are directly comparable.
 
-| UTXOs | signed & verified | batches | largest tx | plan (ms) | sign + verify (ms) | PSBT total (KiB) | raw total (KiB) | fee % | RSS (MB) |
+| UTXOs | signed & verified | batches | largest tx | plan (ms) | sign + verify (ms) | PSBT base64 payload (KiB) | raw total (KiB) | fee % | RSS (MB) |
 | ---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 1 | yes | 1 | 444 WU | 35 | 25 | 0.2 | 0.2 | 2.22% | 99.4 |
 | 100 | yes | 1 | 23,214 WU | 989 | 1,359 | 16.1 | 10.5 | 1.16% | 120.4 |
@@ -23,7 +23,7 @@ one 64-byte witness element), so the serialized sizes are directly comparable.
 | 1,083 | yes | 1 | 249,312 WU | 10,242 | 21,989 | 173.5 | 113.2 | 1.15% | 135.0 |
 | 2,000 | yes | 2 | 395,822 WU | 19,426 | 46,434 | 320.5 | 209.1 | 1.15% | 187.3 |
 | 5,000 | yes | 3 | 395,822 WU | 48,750 | 122,318 | 801.1 | 522.6 | 1.15% | 202.0 |
-| 10,000 | no | 6 | 395,822 WU | 96,760 | — | 1,602.1 | 1,201.6 | 1.15% | 202.6 |
+| 10,000 | no | 6 | 395,822 WU | 96,760 | — | 1,602.1 | — | 1.15% | 202.6 |
 
 Weights, sizes and fee percentages are deterministic — they come from the
 serialized artifacts and repeat exactly. The millisecond and RSS columns are
@@ -50,8 +50,9 @@ because the fee is exact `vsize × fee rate`, not a rounded estimate.
   Mainnet, `estimateSweepWeight(1079, 23)` = 248,348 WU = 62,087 vB matched the
   confirmed transaction on chain to the byte (`docs/MAINNET_ACCEPTANCE.md`).
 - **Memory scales with the plan, not the batch count.** RSS grows from ~99 MB at
-  1 input to ~203 MB at 10,000 and then flattens; the 10,000-input plan holds six
-  PSBTs and six signed raw transactions in memory and stays under 210 MB.
+  1 input to ~203 MB at 10,000 and then flattens; the 10,000-input case holds six unsigned
+  PSBTs. No signed raw transaction is produced for that size; its raw-size column
+  is not measured. Historical RSS values are process observations, not a ceiling.
 
 ## Per-size invariants asserted
 
@@ -79,9 +80,9 @@ A batch is signed, decoded and independently verified before the next batch is
 touched, and broadcasting is a separate per-txid authorization
 (`docs/SECURITY_REVIEW.md`, F-series regressions in
 `tests/security-regressions.test.ts`). The verification report for a batch is
-produced from that batch's own serialized PSBT, so a resumed or re-run flow
-re-plans the same selection instead of accumulating a second transaction over an
-already-spent input.
+produced from that batch's own serialized PSBT, and M9 blocks payload fallback once any signed report exists. Signed bytes and
+submitted outcomes are retained instead of repartitioning already-signed inputs.
+A fresh scan is an explicit owner action; submitted txids must be resolved first.
 
 ## What this does NOT prove
 
@@ -135,3 +136,21 @@ The suite still yields a macrotask between sizes and between batches
 (`yieldToEventLoop`). That changes no computation and no assertion — it lets the
 worker answer its supervisor and lets memory be reclaimed between the large
 builds.
+
+## M9 measurement correction (Rio, 2026-10-09)
+
+`psbtKiB` measures the **base64 request payload**, not binary PSBT size. Earlier
+10,000-input `rawKiB` was computed by multiplying that payload by 3/4, which
+measured decoded PSBT bytes rather than a raw transaction. That value has been
+removed. Unsigned cases now print `-`; signed cases measure actual verified raw
+hex bytes. This changes reporting only, not the planner, fee, weight or tests.
+
+Rio is Fedora 44 x86_64, Node 24.20.0, pnpm 10.17.1. The initial full suite and
+scale run passed (exit 0) in 447.33 s and 482.98 s respectively while running
+concurrently. Those durations are not isolated performance measurements.
+A separate full scale run passed 7/7, exit 0, in 466.67 s. A corrected, isolated
+10,000-input run passed in 120.33 s: planning 119,975 ms, six batches, maximum
+395,822 WU, base64 PSBT payload 1,602.1 KiB, RSS 301.8 MB. No raw transaction
+was signed for that case, so raw size remains unmeasured. This RSS exceeds the
+historical sample and is reported as observed, not hidden behind the old value.
+See [`M9_VALIDATION.md`](M9_VALIDATION.md).

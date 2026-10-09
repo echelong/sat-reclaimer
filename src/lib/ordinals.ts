@@ -463,6 +463,7 @@ export type PaginationOptions = {
   limit?: number;
   maxPages?: number;
   maxRows?: number;
+  onProgress?: (progress: { pagesFetched: number; retrievedCount: number; reportedTotal: number | null }) => void;
 };
 
 export type PaginationResult = {
@@ -542,8 +543,21 @@ export async function fetchAllInscriptions(
     }
     pages += 1;
 
-    const pageTotal = Number(page.total);
-    if (Number.isFinite(pageTotal) && pageTotal >= 0) reportedTotal = pageTotal;
+    // A missing/null total means unknown, not zero (`Number(null) === 0`).
+    // A changing total means this is not one stable wallet inventory.
+    if (page.total !== undefined && page.total !== null) {
+      const pageTotal = typeof page.total === 'number' ? page.total
+        : typeof page.total === 'string' && /^\d+$/.test(page.total) ? Number(page.total) : NaN;
+      if (!Number.isSafeInteger(pageTotal) || pageTotal < 0) {
+        throw new ReclaimerError('WALLET_MALFORMED_RESPONSE', 'The wallet returned an invalid inscription total. Rescan before planning.');
+      }
+      if (reportedTotal !== null && pageTotal !== reportedTotal) {
+        truncated = true;
+        warnings.push('The wallet inscription total changed during pagination. Results are incomplete; rescan the wallet.');
+        break;
+      }
+      reportedTotal = pageTotal;
+    }
 
     // An empty page is the provider's explicit "no further pages" signal.
     if (pageRows.length === 0) {
@@ -578,6 +592,13 @@ export async function fetchAllInscriptions(
     }
 
     offset += pageRows.length;
+    options.onProgress?.({ pagesFetched: pages, retrievedCount: rows.length, reportedTotal });
+
+    if (reportedTotal !== null && rows.length > reportedTotal) {
+      truncated = true;
+      warnings.push('The wallet returned more inscriptions than its reported total. Results are inconsistent; rescan the wallet.');
+      break;
+    }
 
     if (reportedTotal !== null && rows.length >= reportedTotal) break;
   }

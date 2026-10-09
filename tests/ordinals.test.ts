@@ -300,6 +300,36 @@ describe('pagination', () => {
     ).rejects.toMatchObject({ code: 'WALLET_MALFORMED_RESPONSE' });
   });
 
+  it('treats a null total as unknown and reads through the explicit empty page', async () => {
+    const fetchPage = vi.fn(async ({ offset }: { offset: number; limit: number }) => ({
+      total: null, inscriptions: offset < 2 ? [{ inscriptionId: `i${offset}` }] : [],
+    }));
+    const result = await fetchAllInscriptions(fetchPage);
+    expect(result.pagesFetched).toBe(3);
+    expect(result.retrievedCount).toBe(2);
+    expect(result.reportedTotal).toBeNull();
+    expect(result.complete).toBe(true);
+  });
+
+  it.each(['', 'wrong', -1, 1.5, Infinity, true])('refuses a malformed inscription total %s', async (total) => {
+    await expect(fetchAllInscriptions(async () => ({ total, inscriptions: [{ inscriptionId: 'one' }] })))
+      .rejects.toMatchObject({ code: 'WALLET_MALFORMED_RESPONSE' });
+  });
+
+  it('does not call a shrinking inventory complete after a wallet changes mid-scan', async () => {
+    const result = await fetchAllInscriptions(async ({ offset }) => ({
+      total: offset === 0 ? 3 : 1, inscriptions: [{ inscriptionId: `i${offset}` }],
+    }));
+    expect(result.complete).toBe(false);
+    expect(result.truncated).toBe(true);
+    expect(result.warnings.join(' ')).toContain('changed');
+  });
+
+  it('blocks an inconsistent zero total with nonempty rows', async () => {
+    const result = await fetchAllInscriptions(async () => ({ total: 0, inscriptions: [{ inscriptionId: 'one' }] }));
+    expect(result.complete).toBe(false);
+  });
+
   it('clamps an oversized page limit', async () => {
     const fetchPage = vi.fn(async ({ limit }: { offset: number; limit: number }) => ({
       total: 0,

@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
+  resolve: { alias: { '@': fileURLToPath(new URL('.', import.meta.url)) } },
   test: {
     // The whole-wallet sweep tests build, serialize, finalize and measure very
     // large transactions synchronously (a 1,083-input sweep is ~250,000 WU, and

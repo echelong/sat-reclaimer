@@ -47,7 +47,26 @@ try {
   process.exit(1);
 }
 
-const advisories = Object.values(report.advisories ?? {});
+// Registry outages can return valid JSON containing an error instead of an audit.
+// CI intentionally ignores pnpm's exit status to inspect advisories, so an absent
+// report must fail here rather than appearing to be a zero-advisory success.
+const counts = report?.metadata?.vulnerabilities;
+if (!report || report.error || !report.advisories || typeof report.advisories !== 'object' ||
+    Array.isArray(report.advisories) || !counts ||
+    !['info', 'low', 'moderate', 'high', 'critical'].every((level) => Number.isSafeInteger(counts[level]) && counts[level] >= 0)) {
+  console.error('FAIL: audit report is incomplete or contains a registry error. Run pnpm audit again when the registry is available.');
+  process.exit(1);
+}
+const advisories = Object.values(report.advisories);
+if (['high', 'critical'].some((level) => counts[level] > 0 && !advisories.some((a) => a?.severity === level))) {
+  console.error('FAIL: audit summary reports vulnerabilities without their advisory details.');
+  process.exit(1);
+}
+if (advisories.some((a) => !a || typeof a.module_name !== 'string' ||
+    !['info', 'low', 'moderate', 'high', 'critical'].includes(a.severity))) {
+  console.error('FAIL: audit report contains a malformed advisory.');
+  process.exit(1);
+}
 const blocking = advisories.filter((a) => a.severity === 'high' || a.severity === 'critical');
 
 const exceptionFor = (advisory) =>

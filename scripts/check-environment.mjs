@@ -47,7 +47,7 @@ function installHint(tool) {
     `  Debian / Ubuntu:       sudo apt install ${tool === 'node' ? 'nodejs npm' : 'npm'}`,
     `  Arch:                  sudo pacman -S ${nodeName === 'Node.js' ? 'nodejs npm' : 'pnpm'}`,
     '  Any distro, no root:   https://nodejs.org/en/download (a tarball you can unpack in $HOME)',
-    '  Then enable pnpm:      corepack enable   (corepack ships with Node)',
+    '  Then enable pnpm:      corepack enable   (if installed)',
   ].join('\n');
 }
 
@@ -94,7 +94,7 @@ if (existsSync(join(root, 'node_modules'))) {
   console.log(`${ok('ok')}    dependencies are installed (node_modules exists)`);
 } else {
   console.log(`${warn('note')}  dependencies are not installed yet`);
-  notes.push('Run `pnpm install` in the repository directory.');
+  notes.push('Run `pnpm install --frozen-lockfile` in the repository directory.');
 }
 
 console.log('');
