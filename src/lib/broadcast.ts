@@ -526,7 +526,6 @@ export async function checkTxidStatus(args: {
     // claiming a mempool presence that was never reported would be a fabricated
     // result, so the next endpoint is asked instead.
     if (typeof confirmedFlag !== 'boolean') continue;
-    answered = true;
     const confirmed = confirmedFlag;
     const height = (body as { block_height?: unknown }).block_height;
     const blockHeight = typeof height === 'number' ? height : null;
