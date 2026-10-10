@@ -73,7 +73,9 @@ pnpm test:browser --scale
 The runner rebuilds `plan` and `testnet` modes, keeps Mainnet disabled, creates an
 isolated browser profile, and intercepts every external request. It never uses an
 installed wallet extension or a live broadcast transport. Screenshots and JSON
-evidence go to `/tmp/sat-reclaimer-browser` by default (`QA_OUTPUT` overrides it).
+evidence go to a fresh private `sat-reclaimer-browser-*` directory under the OS
+temporary directory by default (`QA_OUTPUT` sets its parent directory). The runner
+prints the exact path; evidence files also use fresh private subdirectories.
 `QA_CHROMIUM` can point to an existing Chromium executable. Linux hosts may need
 Playwright's browser system libraries; CI installs them with `--with-deps`.
 Do not describe these fixtures as a real Xverse acceptance run.

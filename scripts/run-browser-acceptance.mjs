@@ -1,12 +1,14 @@
 // Rebuild each launcher mode, exercise it in an isolated fixture browser, and
 // shut it down. Mainnet is never enabled; every external request is intercepted.
 import { spawn } from 'node:child_process';
-import { mkdir, open } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { mkdir, mkdtemp, open } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 const port = process.env.QA_PORT || '33217';
-const output = resolve(process.env.QA_OUTPUT || '/tmp/sat-reclaimer-browser');
-await mkdir(output, { recursive: true });
+const parent = resolve(process.env.QA_OUTPUT || tmpdir());
+await mkdir(parent, { recursive: true });
+const output = await mkdtemp(join(parent, 'sat-reclaimer-browser-'));
 let server;
 let log;
 async function stop() {
@@ -36,6 +38,7 @@ async function launch(mode) {
   });
 }
 async function qa(kind, flags = {}) {
+  await mkdir(`${output}/${kind}`, { mode: 0o700 });
   await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['scripts/browser-acceptance.mjs'], {
       env: { ...process.env, QA_SCALE: 'false', QA_BROADCAST: 'false', QA_ORIGIN: `http://127.0.0.1:${port}`, QA_OUTPUT: `${output}/${kind}`, ...flags }, stdio: 'inherit',

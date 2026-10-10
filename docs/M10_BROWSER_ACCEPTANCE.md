@@ -28,6 +28,13 @@ verification guard, signing policy or broadcast transport was changed:
    claimed the largest weight/vsize for every batch. It now says **largest** and
    still shows the aggregate total; individual batch measurements remain visible.
 
+A later CodeQL PR check found two high-severity `js/insecure-temporary-file`
+alerts in the new QA runners: predictable log/evidence files under `/tmp` could
+be replaced with symlinks by another local user. Both runners now allocate
+fresh private directories with `mkdtemp` before writing files. No suppression
+or waiver was added. This storage fix is confined to the offline QA harness;
+the final CodeQL check must show those findings resolved before merge.
+
 ## Real rendered browser evidence
 
 The **production launcher**, not `next dev`, rebuilt `plan` and `testnet` modes

@@ -1,15 +1,20 @@
 // Production browser QA only. No application test hooks or live wallet access.
 // Install Playwright separately and set PLAYWRIGHT_MODULE to its index.mjs.
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import * as btc from '@scure/btc-signer';
 import { base64, hex } from '@scure/base';
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const origin = process.env.QA_ORIGIN || 'http://127.0.0.1:33217';
 assert.equal(new URL(origin).hostname, '127.0.0.1');
-const output = process.env.QA_OUTPUT || '/tmp/sat-reclaimer-m10-browser';
-await mkdir(output, { recursive: true });
+const outputParent = process.env.QA_OUTPUT || tmpdir();
+await mkdir(outputParent, { recursive: true });
+// A fresh 0700 directory prevents another local user replacing predictable
+// evidence/download paths with symlinks before they are opened.
+const output = await mkdtemp(join(outputParent, 'sat-reclaimer-qa-'));
 // Existing deterministic offline fixture key; never use a funded wallet here.
 const key = hex.decode('1'.padStart(64, '0'));
 const pub = btc.utils.pubSchnorr(key);
@@ -373,7 +378,7 @@ try {
   assert.deepEqual(errors, []);
   assert.deepEqual(evidence.localFailures, []);
   assert.deepEqual(evidence.console.filter(m => !m.text.startsWith('Failed to load resource:')), [], 'Unexpected console/CSP messages');
-  console.log(JSON.stringify({ checks: evidence.checks, layouts: evidence.layouts.length, posts, errors }));
+  console.log(JSON.stringify({ output, checks: evidence.checks, layouts: evidence.layouts.length, posts, errors }));
 } catch (error) {
   evidence.failure = error.message;
   evidence.failureText = await page.locator('body').innerText().catch(() => 'Page unavailable');
