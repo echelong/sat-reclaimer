@@ -52,7 +52,7 @@ Mainnet broadcasting in any public deployment, while those gates are open.
 
 ## Current priority
 
-M9 — local reliability and the prepared `v0.1.0-rc.2` release candidate. The repository is
+M10 — RC2 browser acceptance and the prepared `v0.1.0-rc.2` release candidate. The repository is
 published under MIT at `github.com/echelong/sat-reclaimer` and is distributed as a
 **locally runnable** app: clone it, run `pnpm local`, connect Xverse. There is no
 hosted site, no domain and no account, and none is wanted.
@@ -62,9 +62,10 @@ formally verified:** no chain, browser/Xverse version, redacted screenshot, scan
 figure, accepted input count or txid was supplied. Those reports are recorded as
 `PROVISIONAL PASS` in `docs/MANUAL_ACCEPTANCE.md` and **they move no release gate**.
 The artifacts that would change that are listed there under *Evidence still
-outstanding*. On 2026-10-09 the owner clarified that the newer transaction was
-in the mempool and requested no lookup. Its TXID and network remain unrecorded;
-no new confirmation or independent chain evidence is claimed.
+outstanding*. The owner has since reported that the newer transaction is
+confirmed (M10, 2026-10-10), superseding the earlier mempool report. Its TXID
+and network remain unrecorded; this is operator-reported confirmation, not
+independently verified chain evidence. No lookup was performed.
 
 Remaining external acceptance evidence:
 

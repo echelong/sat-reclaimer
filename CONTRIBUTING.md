@@ -60,6 +60,24 @@ also run the large-wallet suite:
 pnpm test:max  # adds the 10,000-UTXO plan (~2 minutes)
 ```
 
+For console or layout changes, also exercise the production launcher and rendered
+browser with the offline provider/node fixtures:
+
+```bash
+pnpm exec playwright install chromium
+pnpm test:browser
+# Optional browser event-loop measurement at 10,000 inputs:
+pnpm test:browser --scale
+```
+
+The runner rebuilds `plan` and `testnet` modes, keeps Mainnet disabled, creates an
+isolated browser profile, and intercepts every external request. It never uses an
+installed wallet extension or a live broadcast transport. Screenshots and JSON
+evidence go to `/tmp/sat-reclaimer-browser` by default (`QA_OUTPUT` overrides it).
+`QA_CHROMIUM` can point to an existing Chromium executable. Linux hosts may need
+Playwright's browser system libraries; CI installs them with `--with-deps`.
+Do not describe these fixtures as a real Xverse acceptance run.
+
 `pnpm test` runs the regression suite in roughly seven minutes, most of it
 real PSBT construction, signing, verification and finalization for wallets from 1
 to 5,000 inputs. The one skip is the 10,000-input plan: it is a single ~100-second

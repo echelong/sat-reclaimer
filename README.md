@@ -280,7 +280,7 @@ See [`/privacy`](app/privacy/page.tsx) and [`docs/RISK.md`](docs/RISK.md).
 - **No external security audit.**
 - **No live Signet end-to-end run** — there is no inscription-bearing Signet UTXO
   to spend.
-- **A refreshed tab loses an unsigned batch.** Mitigated by *Download verified
+- **A refreshed tab loses the in-memory plan and signed bytes.** Mitigated by *Download verified
   .hex*; automatic recovery is deliberately not implemented.
 - **Broadcast endpoints are third parties.** They see the transaction, as any node
   would; behaviour under rate limiting and outage is handled but not exhaustively

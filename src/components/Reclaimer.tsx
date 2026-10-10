@@ -872,7 +872,7 @@ export function Reclaimer() {
                 <dd className="num">
                   {sweep.singleTransaction
                     ? `${num(sweep.maxVsize)} vB`
-                    : `${num(sweep.maxVsize)} vB each, ${num(sweep.measurements.reduce((total, m) => total + m.vsize, 0))} vB total`}
+                    : `${num(sweep.maxVsize)} vB largest, ${num(sweep.measurements.reduce((total, m) => total + m.vsize, 0))} vB total`}
                 </dd>
               </div>
               <div>
@@ -880,7 +880,7 @@ export function Reclaimer() {
                 <dd className="num">
                   {sweep.singleTransaction
                     ? `${num(sweep.maxWeight)} WU`
-                    : `${num(sweep.maxWeight)} WU each, ${num(sweep.totalWeight)} WU total`}
+                    : `${num(sweep.maxWeight)} WU largest, ${num(sweep.totalWeight)} WU total`}
                 </dd>
               </div>
               <div>
@@ -1139,7 +1139,7 @@ export function Reclaimer() {
           authorisation={BROADCAST_AUTHORISATION}
         />
 
-        <div className="cx-log" aria-live="polite" aria-atomic="true" style={{ position: 'sticky', bottom: 16, zIndex: 10 }}>
+        <div className="cx-log" aria-live="polite" aria-atomic="true">
           {status && (
             <p className="cx-banner" data-tone="info">
               <span className="cx-banner-tag mono">Status</span>

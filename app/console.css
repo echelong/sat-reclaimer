@@ -61,6 +61,8 @@
   position: relative;
   z-index: 1;
   padding: 46px 0 120px;
+  /* Flags, txids and provider errors must remain readable on narrow screens. */
+  overflow-wrap: anywhere;
 }
 
 .console-wrap {
@@ -430,7 +432,7 @@
 }
 
 .cx-dl-grid {
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
   gap: 1px;
   border: 1px solid var(--line);
   border-radius: var(--r);
@@ -605,6 +607,7 @@
 
 .cx-batches {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   margin-top: 20px;
 }
@@ -669,10 +672,11 @@
 
 .cx-checks li {
   display: grid;
-  grid-template-columns: 14px 1fr;
+  grid-template-columns: 14px minmax(0, 1fr);
   gap: 8px;
   align-items: start;
   color: var(--text-faint);
+  overflow-wrap: anywhere;
 }
 
 .cx-checks li[data-ok='true'] {

@@ -599,11 +599,11 @@ moves a gate.
   without the gates described above, stop and report it privately under
   [`SECURITY.md`](../SECURITY.md) rather than in a public issue.
 
-## M9 continuation operator update (2026-10-09)
+## M10 owner update (2026-10-10)
 
-The owner clarified that the newer transaction was **in the mempool** and reports
-that it worked well. The owner requested no further lookup. No TXID, network or
-confirmation artifact was supplied, and no lookup was performed. This is an
-operator observation of mempool presence, **not independently verified
-confirmation**. Existing provisional case results and release-gate counts remain
-unchanged. No additional signing or broadcasting was initiated.
+The owner has since reported the newer transaction **confirmed**, superseding
+its earlier mempool status. No TXID, network or confirmation artifact was
+supplied, and no lookup was performed. This is **operator-reported confirmation**,
+not independently verified chain evidence. Existing provisional case results
+and release-gate counts remain unchanged. No additional live signing or
+broadcasting was initiated.

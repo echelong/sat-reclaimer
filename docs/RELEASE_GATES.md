@@ -14,7 +14,7 @@ Legend: **PASS** = demonstrated in this repository with reproducible evidence ·
 demonstrated by any evidence available here (often because it needs a live wallet,
 a real deployment, or a third party).
 
-Date of record: 2026-10-09. M9 local results: `docs/M9_VALIDATION.md`. Repo HEAD audited: see `docs/MAINNET_ACCEPTANCE.md`
+Date of record: 2026-10-10. M10 browser results: `docs/M10_BROWSER_ACCEPTANCE.md`. M9 local results: `docs/M9_VALIDATION.md`. Repo HEAD audited: see `docs/MAINNET_ACCEPTANCE.md`
 and the final release report.
 
 ---
@@ -119,17 +119,19 @@ and the final release report.
 ## H — Browser accessibility and performance
 
 Historical production-build evidence (`all flags false`), served with `next start`,
-driven in headless Chromium over the Chrome DevTools Protocol. These observations
-were not repeated in M9: browser automation was unavailable. M9 HTTP/header and
-handler checks do not substitute for visual or live-wallet acceptance.
+driven in headless Chromium over the Chrome DevTools Protocol. Those historical observations were not repeated in M9. M10 repeats production
+landing/console acceptance at all five widths, including selected, pre-sign and
+verified states (25 observations), with safe provider/node fixtures; see
+[`M10_BROWSER_ACCEPTANCE.md`](M10_BROWSER_ACCEPTANCE.md) and its screenshots.
+Live Xverse acceptance remains separate and open. H6/H8 retain historical evidence.
 
 | # | Requirement | Status | Evidence |
 | --- | --- | --- | --- |
-| H1 | Production build QA at 1440 / 1280 / 834 / 390 / 320 px | **PASS** | 5 viewports × 6 routes: zero horizontal overflow, layout viewport stays exactly at the device width. Screenshots: [`landing.png`](screenshots/landing.png), [`console.png`](screenshots/console.png), [`landing-mobile.png`](screenshots/landing-mobile.png) |
-| H2 | Keyboard navigation and visible focus indicators | **PASS** | 13 tab stops on `/app`: 0 zero-sized, 0 without an outline or box-shadow indicator. Focus ring restored on console inputs (HEAD commit) |
-| H3 | `prefers-reduced-motion` respected | **PASS** | Forced reduce: all 28 reveal elements at opacity 1 with 0 remaining transition delays — the delayed-animation-with-`fill-mode` trap stays fixed |
+| H1 | Production build QA at 1440 / 1280 / 834 / 390 / 320 px | **PASS** | 5 viewports × 6 routes: zero horizontal overflow, layout viewport stays exactly at the device width. M10: 25 state/width observations, zero overflow after fixing nested review grids and long flags. Screenshots: [`landing.png`](screenshots/landing.png), [`console.png`](screenshots/console.png), [`landing-mobile.png`](screenshots/landing-mobile.png) |
+| H2 | Keyboard navigation and visible focus indicators | **PASS** | 13 tab stops on `/app`: 0 zero-sized, 0 without an outline or box-shadow indicator. M10: real Tab/Enter/Space navigation with 2 px rings, mobile menu Enter/Escape; details and selection operated by keyboard |
+| H3 | `prefers-reduced-motion` respected | **PASS** | Forced reduce: all 28 reveal elements at opacity 1 with 0 remaining transition delays — the delayed-animation-with-`fill-mode` trap stays fixed. M10 reduced-motion reveals also visible, console animations stopped and smooth scroll off |
 | H4 | Animations do not affect signing or transaction accuracy | **PASS** | `grep` over `src/components/{landing,ui,legal}`: no import from `src/lib`, and no `fetch`/`XMLHttpRequest`/`WebSocket`. Only `Reclaimer.tsx` and `console/ImportTransaction.tsx` reach the engine; only `src/lib/xverse.ts` imports `sats-connect` |
-| H5 | CSP violations absent from the console in production | **PASS** | Zero console errors and zero warnings across all 5 viewports × 6 routes (CSP violations surface as console errors). Header set verified over HTTP (`default-src 'none'`, `frame-ancestors 'none'`, `connect-src` limited to the three broadcast hosts) |
+| H5 | CSP violations absent from the console in production | **PASS** | Zero console errors and zero warnings across all 5 viewports × 6 routes (CSP violations surface as console errors). M10: no observed CSP violation or failed local resource; intercepted unknown/offline fixture errors recorded separately. Header set verified over HTTP (`default-src 'none'`, `frame-ancestors 'none'`, `connect-src` limited to the three broadcast hosts) |
 | H6 | No browser memory leak across the flows | **PASS** | 10 alternating `/` ↔ `/app` cycles with a forced GC between samples: JS heap 3 → 12 MB and then flat (11/12/11/12 MB over the last four), i.e. bundle load then steady state, not monotonic growth |
 | H7 | Wallet-unavailable messaging and error states | **PASS** | Connect pressed with no provider installed: `REFUSED No Xverse provider was found. Install the Xverse extension, or open this page inside the Xverse in-app browser. [WALLET_NOT_INSTALLED]` — fail-closed, actionable, not a silent no-op |
 | H8 | Landing-page demo arithmetic matches the confirmed sweep | **PASS** | Demo button exercised in the browser: 8 result lines, 601,214 sats in / 62,087 sats fee / 539,127 sats net — the confirmed on-chain figures |
