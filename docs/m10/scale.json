@@ -1,0 +1,1146 @@
+{
+  "origin": "http://127.0.0.1:33217",
+  "address": "tb1pmfr3p9j00pfxjh0zmgp99y8zftmd3s5pmedqhyptwy6lm87hf5ssk79hv2",
+  "destination": "tb1pan4szzggtg9rudp5lt4tyr5aprjmflwg2wxy8zarue6gxjw47f0sfcmvga",
+  "layouts": [],
+  "checks": [
+    "10,000 fixture inputs, 100-output selection pages, six measured batches; browser event-loop timing recorded; no signing or POST"
+  ],
+  "errors": [],
+  "calls": [
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "wallet_connect",
+      "params": {
+        "addresses": [
+          "ordinals",
+          "payment"
+        ],
+        "network": "Signet",
+        "message": "Connect to inspect inscription UTXOs and build a BTC sweep."
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 0,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 100,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 200,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 300,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 400,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 500,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 600,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 700,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 800,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 900,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 1000,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 1100,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 1200,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 1300,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 1400,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 1500,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 1600,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 1700,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 1800,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 1900,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 2000,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 2100,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 2200,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 2300,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 2400,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 2500,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 2600,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 2700,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 2800,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 2900,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 3000,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 3100,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 3200,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 3300,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 3400,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 3500,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 3600,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 3700,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 3800,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 3900,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 4000,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 4100,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 4200,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 4300,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 4400,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 4500,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 4600,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 4700,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 4800,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 4900,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 5000,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 5100,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 5200,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 5300,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 5400,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 5500,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 5600,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 5700,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 5800,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 5900,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 6000,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 6100,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 6200,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 6300,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 6400,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 6500,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 6600,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 6700,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 6800,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 6900,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 7000,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 7100,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 7200,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 7300,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 7400,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 7500,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 7600,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 7700,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 7800,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 7900,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 8000,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 8100,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 8200,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 8300,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 8400,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 8500,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 8600,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 8700,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 8800,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 8900,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 9000,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 9100,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 9200,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 9300,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 9400,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 9500,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 9600,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 9700,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 9800,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 9900,
+        "limit": 100
+      }
+    }
+  ],
+  "browser": "147.0.7727.15",
+  "console": [],
+  "localFailures": [],
+  "scanProgress": "Scanning: 100 of 10,000 inscriptions, 1 pages read…",
+  "paginationMs": 65,
+  "planningMs": 68973,
+  "timing": {
+    "gaps": [
+      68851.19999998808,
+      48.900000005960464,
+      50
+    ],
+    "longTasks": [
+      68803
+    ],
+    "last": 91622
+  },
+  "summary": "05\nPre-sign review\nSIGNET\n\n10,000 UTXOs → 6 transactions → 1 destination\n\nSELECTED UTXOS\n10,000\nINSCRIPTIONS AFFECTED\n10,000\nTOTAL INPUT SATS\n100,000,000\nDESTINATION OUTPUT SATS\n98,849,328\nFEE RATE\n2 sat/vB\nEXACT FEE\n1,150,672\nFEE AS % OF RECOVERED BTC\n1.1500%\nVSIZE\n98,956 vB largest, 575,336 vB total\nWEIGHT\n395,822 WU largest, 2,301,332 WU total\nTRANSACTIONS / BATCHES\n6\nDESTINATION\ntb1pan4szzggtg9rudp5lt4tyr5aprjmflwg2wxy8zarue6gxjw47f0sfcmvga\n\nType SPEND AS BTC to enable signing. Each transaction is signed, decoded and verified on its own. Broadcasting is a separate manual step: after a batch verifies you review the exact verified transaction, authorize that txid, and submit it. Nothing is broadcast automatically, and an ambiguous network answer is never followed by a resubmission.\n\nSIGNING ACKNOWLEDGEMENT PHRASE\nBatch 1 of 6\nSIGNET\nINPUTS\n1,720 · 17,200,000 sats\nOUTPUT\n17,002,088 sats\nFEE\n197,912 sats at 2 sat/vB\nWEIGHT / VSIZE\n395,822 WU / 98,956 vB\nUNSIGNED TXID\n424c8c23f068653f86a816462cb2a0469a4c81e1babe970186844c4125c1b004\nSIGN + VERIFY\nBROADCAST TRANSACTION\n\nSet NEXT_PUBLIC_ENABLE_SIGNET_BROADCAST=true in .env.local and restart to unlock broadcasting on Signet.\n\nBatch 2 of 6\nSIGNET\nINPUTS\n1,720 · 17,200,000 sats\nOUTPUT\n17,002,088 sats\nFEE\n197,912 sats at 2 sat/vB\nWEIGHT / VSIZE\n395,822 WU / 98,956 vB\nUNSIGNED TXID\n643c80eae7a961843b9946cee91fd132c55da919c6e0fb93abc725f8dd59a4f9\nSIGN + VERIFY\nBROADCAST TRANSACTION\n\nSet NEXT_PUBLIC_ENABLE_SIGNET_BROADCAST=true in .env.local and restart to unlock broadcasting on Signet.\n\nBatch 3 of 6\nSIGNET\nINPUTS\n1,720 · 17,200,000 sats\nOUTPUT\n17,002,088 sats\nFEE\n197,912 sats at 2 sat/vB\nWEIGHT / VSIZE\n395,822 WU / 98,956 vB\nUNSIGNED TXID\n449c907ce2ea05ead9a96c866a6619c0740afa98f1003a69a0a7569d6665c912\nSIGN + VERIFY\nBROADCAST TRANSACTION\n\nSet NEXT_PUBLIC_ENABLE_SIGNET_BROADCAST=true in .env.local and restart to unlock broadcasting on Signet.\n\nBatch 4 of 6\nSIGNET\nINPUTS\n1,720 · 17,200,000 sats\nOUTPUT\n17,002,088 sats\nFEE\n197,912 sats at 2 sat/vB\nWEIGHT / VSIZE\n395,822 WU / 98,956 vB\nUNSIGNED TXID\n762c8b63717a5f3501dbceb68b9ee28db2378b78a752f2764806a33f98c4d223\nSIGN + VERIFY\nBROADCAST TRANSACTION\n\nSet NEXT_PUBLIC_ENABLE_SIGNET_BROADCAST=true in .env.local and restart to unlock broadcasting on Signet.\n\nBatch 5 of 6\nSIGNET\nINPUTS\n1,720 · 17,200,000 sats\nOUTPUT\n17,002,088 sats\nFEE\n197,912 sats at 2 sat/vB\nWEIGHT / VSIZE\n395,822 WU / 98,956 vB\nUNSIGNED TXID\nce165053f5b52f014b86738764e5d8b2d068569e2e8da7400237421a0bba0934\nSIGN + VERIFY\nBROADCAST TRANSACTION\n\nSet NEXT_PUBLIC_ENABLE_SIGNET_BROADCAST=true in .env.local and restart to unlock broadcasting on Signet.\n\nBatch 6 of 6\nSIGNET\nINPUTS\n1,400 · 14,000,000 sats\nOUTPUT\n13,838,888 sats\nFEE\n161,112 sats at 2 sat/vB\nWEIGHT / VSIZE\n322,222 WU / 80,556 vB\nUNSIGNED TXID\naab1f86f9f58d980038a1269b5cd6fc7ebaa64b421edf67e61522ea3f12e0d10\nSIGN + VERIFY\nBROADCAST TRANSACTION\n\nSet NEXT_PUBLIC_ENABLE_SIGNET_BROADCAST=true in .env.local and restart to unlock broadcasting on Signet.",
+  "posts": 0
+}

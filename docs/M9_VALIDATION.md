@@ -2,8 +2,9 @@
 
 This is internal engineering evidence, not an independent Bitcoin audit or live
 wallet acceptance. No real-money signing, broadcasting or transaction lookup was
-performed. The owner reports the newer transaction was in the mempool and asked
-for no lookup; its TXID and network remain unrecorded.
+performed. The earlier mempool report has been superseded by the owner’s
+confirmation report in M10 (2026-10-10). Its TXID and network remain unrecorded;
+confirmation is operator-reported, not independently verified. No lookup was made.
 
 ## Baseline and scope
 

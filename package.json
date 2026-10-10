@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:max": "LARGE_WALLET_MAX=1 vitest run tests/large-wallet.test.ts",
+    "test:browser": "node scripts/run-browser-acceptance.mjs",
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
@@ -40,6 +41,7 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.4.0",
+    "playwright": "1.58.2",
     "typescript": "^5.9.0",
     "vitest": "^5.0.3"
   }

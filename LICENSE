@@ -35,6 +35,7 @@ all of them permissive and compatible with the MIT licence above:
 | `next`, `react`, `react-dom` | MIT |
 | `eslint`, `eslint-config-next`, `vitest` | MIT |
 | `typescript` | Apache-2.0 |
+| `playwright`, `playwright-core` (development browser QA only) | Apache-2.0 |
 
 Fonts are served by `next/font/google` (Inter, Space Grotesk, JetBrains Mono)
 and are self-hosted at build time under the SIL Open Font License 1.1, which

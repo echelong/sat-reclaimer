@@ -1,0 +1,99 @@
+{
+  "origin": "http://127.0.0.1:33217",
+  "address": "tb1pmfr3p9j00pfxjh0zmgp99y8zftmd3s5pmedqhyptwy6lm87hf5ssk79hv2",
+  "destination": "tb1pan4szzggtg9rudp5lt4tyr5aprjmflwg2wxy8zarue6gxjw47f0sfcmvga",
+  "layouts": [],
+  "checks": [
+    "Rapid normal broadcast: exactly one intercepted POST, HTTP503 then independent GETs, ambiguous result locks resubmission/re-sign; recovery shares attempt ledger",
+    "File recovery after refresh requires fresh checkbox/phrase; network and byte edits clear approval; rapid recovery submits once, offline lookup never retries"
+  ],
+  "errors": [],
+  "calls": [
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "wallet_connect",
+      "params": {
+        "addresses": [
+          "ordinals",
+          "payment"
+        ],
+        "network": "Signet",
+        "message": "Connect to inspect inscription UTXOs and build a BTC sweep."
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 0,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "signPsbt",
+      "params": {
+        "broadcast": false,
+        "inputs": 3
+      }
+    },
+    {
+      "transport": "POST",
+      "url": "https://mempool.space/signet/api/tx"
+    },
+    {
+      "transport": "GET",
+      "url": "https://mempool.space/signet/api/tx/506d73f49882519b08fd600d285de329cb3c1361a4ce850e9a232cd86a689342/status"
+    },
+    {
+      "transport": "GET",
+      "url": "https://mempool.space/signet/api/tx/506d73f49882519b08fd600d285de329cb3c1361a4ce850e9a232cd86a689342/status"
+    },
+    {
+      "transport": "POST",
+      "url": "https://mempool.space/testnet/api/tx"
+    },
+    {
+      "transport": "GET",
+      "url": "https://mempool.space/testnet/api/tx/506d73f49882519b08fd600d285de329cb3c1361a4ce850e9a232cd86a689342/status"
+    },
+    {
+      "transport": "GET",
+      "url": "https://blockstream.info/testnet/api/tx/506d73f49882519b08fd600d285de329cb3c1361a4ce850e9a232cd86a689342/status"
+    }
+  ],
+  "browser": "147.0.7727.15",
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    }
+  ],
+  "localFailures": [],
+  "posts": 2
+}

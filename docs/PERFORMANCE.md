@@ -154,3 +154,35 @@ A separate full scale run passed 7/7, exit 0, in 466.67 s. A corrected, isolated
 was signed for that case, so raw size remains unmeasured. This RSS exceeds the
 historical sample and is reported as observed, not hidden behind the old value.
 See [`M9_VALIDATION.md`](M9_VALIDATION.md).
+
+## M10 rendered browser responsiveness
+
+The production launcher was exercised in isolated Chromium on Rio with 10,000
+synthetic inputs, not a live Xverse wallet. A measured run took 58,907 ms from
+Review click to rendered review and recorded a 58,747 ms browser long task
+(58,786 ms maximum gap in a 50 ms timer). During that synchronous task the page
+cannot repaint or respond to keyboard, scrolling or clicks. The working indicator
+does not provide continuously updating planning progress. This is a **known beta
+usability limitation**, not a responsive 10,000-input acceptance claim. No worker
+or asynchronous planner was introduced in this acceptance milestone.
+
+Before planning, changing a 100-output selection page took 59 ms in that run;
+the 10,000 rows were displayed as 100 selection pages. Planning returned six
+batches: five of 1,720 inputs and one of 1,400. The UI now labels the maximum
+weight/vsize as **largest**, rather than incorrectly claiming every batch has
+that size. A repeat after the final copy fix took 68,973 ms, with a 68,803 ms long task
+and a 68,851 ms maximum timer gap; pagination took 65 ms. Both timing records
+are retained. Timings are observations from runs concurrent with offline tests,
+not isolated benchmarks or promised latency.
+
+The largest measured batch is **395,822 WU**, leaving only **4,178 WU (1.0445%)**
+below the 400,000 WU standard transaction-weight limit and 178 WU below the
+396,000 WU planner budget. That margin is small; it is not room to loosen
+verification or support an unmeasured witness shape. Actual wallet returns must
+still be independently verified against measured fee and weight invariants.
+Neither this browser run nor the synthetic suite demonstrates that Xverse
+accepted a 10,000-input payload. No signing request was made in the browser scale
+run and no raw transaction was produced for it. B6 remains NOT VERIFIED.
+
+Screenshots, JSON timing evidence and reproduction commands are linked from
+[`M10_BROWSER_ACCEPTANCE.md`](M10_BROWSER_ACCEPTANCE.md).

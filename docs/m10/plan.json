@@ -1,0 +1,777 @@
+{
+  "origin": "http://127.0.0.1:33217",
+  "address": "tb1pmfr3p9j00pfxjh0zmgp99y8zftmd3s5pmedqhyptwy6lm87hf5ssk79hv2",
+  "destination": "tb1pan4szzggtg9rudp5lt4tyr5aprjmflwg2wxy8zarue6gxjw47f0sfcmvga",
+  "layouts": [
+    {
+      "name": "landing",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "landing",
+      "width": 1280,
+      "scrollWidth": 1280,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "landing",
+      "width": 834,
+      "scrollWidth": 834,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "landing",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": [],
+      "textOverflow": [
+        {
+          "tag": "SPAN",
+          "cls": "sr-only",
+          "text": "1,083"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sr-only",
+          "text": "1,079"
+        }
+      ]
+    },
+    {
+      "name": "landing",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": [],
+      "textOverflow": [
+        {
+          "tag": "SPAN",
+          "cls": "sr-only",
+          "text": "1,083"
+        },
+        {
+          "tag": "SPAN",
+          "cls": "sr-only",
+          "text": "1,079"
+        }
+      ]
+    },
+    {
+      "name": "console-idle",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-idle",
+      "width": 1280,
+      "scrollWidth": 1280,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-idle",
+      "width": 834,
+      "scrollWidth": 834,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-idle",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-idle",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-selection",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-selection",
+      "width": 1280,
+      "scrollWidth": 1280,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-selection",
+      "width": 834,
+      "scrollWidth": 834,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-selection",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-selection",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-review",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-review",
+      "width": 1280,
+      "scrollWidth": 1280,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-review",
+      "width": 834,
+      "scrollWidth": 834,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-review",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-review",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-verified",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-verified",
+      "width": 1280,
+      "scrollWidth": 1280,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-verified",
+      "width": 834,
+      "scrollWidth": 834,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-verified",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": [],
+      "textOverflow": []
+    },
+    {
+      "name": "console-verified",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": [],
+      "textOverflow": []
+    }
+  ],
+  "checks": [
+    "Landing reduced-motion reveals visible; mobile menu Enter/Escape interaction",
+    "Keyboard tab order reaches network/wallet/recovery controls, visible focus rings; reduced motion stops animations",
+    "Cancelled connect, network mismatch, rapid connect only once, failed disconnect clears wallet, network switch clears state",
+    "205 outputs: pages 100/100/5, individual selection retained across pages",
+    "Unsigned destination/fee changes invalidate review; fractional fee refused",
+    "Fixture signing broadcast:false; independent verification, signed edit locks, export, confirmed status",
+    "Refresh discards signed state; manual raw import, unknown fee disclosure, read-only confirmation/mempool/unknown/offline; edit invalidation, malformed import refused; zero POSTs",
+    "High-fee warning above 25%, signing cancellation produces no verified transaction, failed rescan discards stale review",
+    "Incomplete provider scan blocks review",
+    "Missing provider reports install/reconnect guidance",
+    "Fixture size rejection replans 5 into 2/2/1, resets phrase, labels largest batch accurately; later rejection preserves signed recovery bytes and partition"
+  ],
+  "errors": [],
+  "calls": [
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "wallet_connect",
+      "params": {
+        "addresses": [
+          "ordinals",
+          "payment"
+        ],
+        "network": "Signet",
+        "message": "Connect to inspect inscription UTXOs and build a BTC sweep."
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "wallet_connect",
+      "params": {
+        "addresses": [
+          "ordinals",
+          "payment"
+        ],
+        "network": "Signet",
+        "message": "Connect to inspect inscription UTXOs and build a BTC sweep."
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "wallet_connect",
+      "params": {
+        "addresses": [
+          "ordinals",
+          "payment"
+        ],
+        "network": "Signet",
+        "message": "Connect to inspect inscription UTXOs and build a BTC sweep."
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "wallet_disconnect"
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "wallet_connect",
+      "params": {
+        "addresses": [
+          "ordinals",
+          "payment"
+        ],
+        "network": "Signet",
+        "message": "Connect to inspect inscription UTXOs and build a BTC sweep."
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 0,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 100,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 200,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "signPsbt",
+      "params": {
+        "broadcast": false,
+        "inputs": 204
+      }
+    },
+    {
+      "transport": "GET",
+      "url": "https://mempool.space/signet/api/tx/91c0749ad9931e05775d89d9d176651cd0f90f99aa932fd6680d3693656a8f9a/status"
+    },
+    {
+      "transport": "GET",
+      "url": "https://mempool.space/signet/api/tx/91c0749ad9931e05775d89d9d176651cd0f90f99aa932fd6680d3693656a8f9a/status"
+    },
+    {
+      "transport": "GET",
+      "url": "https://mempool.space/signet/api/tx/91c0749ad9931e05775d89d9d176651cd0f90f99aa932fd6680d3693656a8f9a/status"
+    },
+    {
+      "transport": "GET",
+      "url": "https://mempool.space/signet/api/tx/91c0749ad9931e05775d89d9d176651cd0f90f99aa932fd6680d3693656a8f9a/status"
+    },
+    {
+      "transport": "GET",
+      "url": "https://mempool.space/signet/api/tx/91c0749ad9931e05775d89d9d176651cd0f90f99aa932fd6680d3693656a8f9a/status"
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "wallet_connect",
+      "params": {
+        "addresses": [
+          "ordinals",
+          "payment"
+        ],
+        "network": "Signet",
+        "message": "Connect to inspect inscription UTXOs and build a BTC sweep."
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 0,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "signPsbt",
+      "params": {
+        "broadcast": false,
+        "inputs": 3
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 0,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 0,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 100,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 200,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 205,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "wallet_connect",
+      "params": {
+        "addresses": [
+          "ordinals",
+          "payment"
+        ],
+        "network": "Signet",
+        "message": "Connect to inspect inscription UTXOs and build a BTC sweep."
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "ord_getInscriptions",
+      "params": {
+        "offset": 0,
+        "limit": 100
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "signPsbt",
+      "params": {
+        "broadcast": false,
+        "inputs": 5
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "signPsbt",
+      "params": {
+        "broadcast": false,
+        "inputs": 2
+      }
+    },
+    {
+      "method": "getInfo",
+      "params": null
+    },
+    {
+      "method": "signPsbt",
+      "params": {
+        "broadcast": false,
+        "inputs": 2
+      }
+    }
+  ],
+  "browser": "147.0.7727.15",
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: net::ERR_FAILED"
+    }
+  ],
+  "localFailures": [],
+  "landingMotion": [
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    },
+    {
+      "opacity": "1",
+      "delay": "0s"
+    }
+  ],
+  "focus": [
+    {
+      "tag": "A",
+      "label": "Skip to console",
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "label": "SAT//RECLAIMER",
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "SELECT",
+      "label": "SignetTestnetMainnet (locked in code)",
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Connect Xverse",
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "INPUT",
+      "label": null,
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "TEXTAREA",
+      "label": null,
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Inspect transaction",
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Load .hex file",
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "BODY",
+      "label": "Skip to consoleSAT//RECLAIMERReclaim ConsoleHow it",
+      "outline": "none",
+      "width": "3px",
+      "visible": false
+    },
+    {
+      "tag": "A",
+      "label": "Skip to console",
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "label": "SAT//RECLAIMER",
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "SELECT",
+      "label": "SignetTestnetMainnet (locked in code)",
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Connect Xverse",
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "INPUT",
+      "label": null,
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "TEXTAREA",
+      "label": null,
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Inspect transaction",
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "BUTTON",
+      "label": "Load .hex file",
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "BODY",
+      "label": "Skip to consoleSAT//RECLAIMERReclaim ConsoleHow it",
+      "outline": "none",
+      "width": "3px",
+      "visible": false
+    },
+    {
+      "tag": "A",
+      "label": "Skip to console",
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    },
+    {
+      "tag": "A",
+      "label": "SAT//RECLAIMER",
+      "outline": "solid",
+      "width": "2px",
+      "visible": true
+    }
+  ],
+  "motion": {
+    "reduced": true,
+    "scroll": "auto",
+    "running": 0
+  },
+  "scanProgress": "Scanning: 100 of 205 inscriptions, 1 pages read…",
+  "posts": 0
+}
