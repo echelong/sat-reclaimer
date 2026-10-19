@@ -24,7 +24,7 @@
     "@noble/hashes": "2.4.0",
     "@scure/base": "2.4.0",
     "@scure/btc-signer": "2.4.1",
-    "next": "16.4.0",
+    "next": "16.4.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "sats-connect": "4.2.1"
